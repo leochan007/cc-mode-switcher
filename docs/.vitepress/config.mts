@@ -5,6 +5,11 @@ export default defineConfig({
   title: 'CC Mode Switcher',
   description: 'Claude Code Plan / Work dual-mode environment switcher',
 
+  // Project page lives at https://<owner>.github.io/<repo>/, so all generated
+  // absolute URLs (/, /zh/, /guide/, /zh/guide/) get prefixed with this base.
+  // For local dev `pnpm docs:dev` serves at http://localhost:5173/cc-mode-switcher/.
+  base: '/cc-mode-switcher/',
+
   // English is the site root (default); Chinese under /zh/
   // Source layout mirrors URLs directly: docs/ ↔ /, docs/guide/ ↔ /guide/,
   // docs/zh/ ↔ /zh/, docs/zh/guide/ ↔ /zh/guide/ — no rewrites needed.
