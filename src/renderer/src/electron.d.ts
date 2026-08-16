@@ -1,5 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
-
+// Mirror of the API exposed by src/preload/index.ts via contextBridge
 export interface ConnectionTestResult {
   ok: boolean
   ms: number
@@ -18,9 +17,3 @@ declare global {
     electronAPI: ElectronAPI
   }
 }
-
-contextBridge.exposeInMainWorld('electronAPI', {
-  copyToClipboard: (text: string) => ipcRenderer.invoke('clipboard:write', text),
-  installCLI: () => ipcRenderer.invoke('install-cli'),
-  testConnection: (url: string) => ipcRenderer.invoke('test-connection', url)
-})

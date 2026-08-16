@@ -47,6 +47,28 @@ ipcMain.handle('clipboard:write', async (_event, text: string) => {
   return true
 })
 
+// IPC: probe a model base URL for connectivity (no CORS in the main process)
+// Any HTTP response counts as reachable; only network/timeout errors fail.
+ipcMain.handle('test-connection', async (_event, url: string) => {
+  const started = Date.now()
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      throw new Error('invalid URL protocol')
+    }
+    const res = await fetch(parsed, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(8000)
+    })
+    return { ok: true, ms: Date.now() - started, status: res.status }
+  } catch (err: any) {
+    const cause = err?.cause?.code ?? err?.cause?.message
+    const reason = cause ?? (err?.name === 'TimeoutError' ? 'timeout' : err?.message) ?? 'unknown error'
+    return { ok: false, ms: Date.now() - started, error: reason }
+  }
+})
+
 // IPC: install CLI symlink so user can run `cc-mode-switcher` from terminal
 ipcMain.handle('install-cli', async () => {
   const { execSync } = await import('child_process')
