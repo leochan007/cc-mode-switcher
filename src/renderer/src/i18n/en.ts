@@ -76,7 +76,13 @@ export default {
     launch: 'Open in terminal',
     launchNoModel: '🔴 Please bind a model first',
     launchOk: '🖥️ Terminal opened — env ready',
-    launchFail: '🔴 Failed to open terminal: {error}'
+    launchFail: '🔴 Failed to open terminal: {error}',
+    overrideTitle: 'Env override detected',
+    overrideMsg:
+      'Claude Code settings (~/.claude/settings.json) has {count} env keys that take precedence over the terminal env and will override your model. Remove them now? A backup is saved first.',
+    overrideClean: 'Clean & continue',
+    overrideCleaned: '🧹 Removed {count} override keys (backup saved)',
+    overrideCleanFail: '🔴 Failed to clean overrides: {error}'
   },
   settings: {
     title: 'Settings',
@@ -91,6 +97,10 @@ export default {
     terminalHint: 'Used by "Open in terminal"',
     choose: 'Choose…',
     notSet: 'Not set',
+    claudeOverrides: 'Claude Code env overrides',
+    overrideNone: 'None — terminal env takes effect',
+    overrideFound: '⚠️ {count} keys override terminal env',
+    clean: 'Clean',
     about: 'About',
     version: 'Version'
   }

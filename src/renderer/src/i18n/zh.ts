@@ -76,7 +76,13 @@ export default {
     launch: '在终端中打开',
     launchNoModel: '🔴 请先绑定模型',
     launchOk: '🖥️ 终端已打开，环境变量已就绪',
-    launchFail: '🔴 打开终端失败：{error}'
+    launchFail: '🔴 打开终端失败：{error}',
+    overrideTitle: '检测到环境变量覆盖',
+    overrideMsg:
+      'Claude Code 配置（~/.claude/settings.json）中有 {count} 个环境变量，优先级高于终端环境变量，会覆盖你切换的模型。现在清除吗？（会先自动备份）',
+    overrideClean: '清除并继续',
+    overrideCleaned: '🧹 已清除 {count} 个覆盖变量（已备份）',
+    overrideCleanFail: '🔴 清除覆盖变量失败：{error}'
   },
   settings: {
     title: '设置',
@@ -91,6 +97,10 @@ export default {
     terminalHint: '供「在终端中打开」使用',
     choose: '选择…',
     notSet: '未设置',
+    claudeOverrides: 'Claude Code 环境覆盖',
+    overrideNone: '无 —— 终端环境变量生效',
+    overrideFound: '⚠️ {count} 个变量会覆盖终端环境',
+    clean: '清除',
     about: '关于',
     version: '版本'
   }

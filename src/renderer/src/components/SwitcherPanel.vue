@@ -43,6 +43,16 @@
       <textarea class="command" readonly :value="command"></textarea>
       <div class="command-tip">{{ t('switcher.tip') }}</div>
     </div>
+
+    <!-- settings.json env override warning -->
+    <ConfirmModal
+      v-if="pendingOverrideClean"
+      :title="t('switcher.overrideTitle')"
+      :message="t('switcher.overrideMsg', { count: overrideCount })"
+      :confirm-text="t('switcher.overrideClean')"
+      @confirm="cleanOverridesAndLaunch"
+      @cancel="pendingOverrideClean = false"
+    />
   </section>
 </template>
 
@@ -56,6 +66,7 @@ import { useToast } from '../composables/useToast'
 import { copyText } from '../utils/clipboard'
 import ModeCard from './ModeCard.vue'
 import IconButton from './IconButton.vue'
+import ConfirmModal from './ConfirmModal.vue'
 
 const { models, planModelId, workModelId, planModel, workModel } = useModels()
 const { t } = useI18n()
@@ -64,6 +75,10 @@ const toast = useToast()
 
 const currentMode = ref<Mode>('plan')
 const copied = ref(false)
+
+// settings.json override warning state
+const pendingOverrideClean = ref(false)
+const overrideCount = ref(0)
 
 const currentModel = computed(() => (currentMode.value === 'plan' ? planModel.value : workModel.value))
 
@@ -74,7 +89,14 @@ function envExports(m: ModelConfig, mode: Mode): string[] {
     `export ANTHROPIC_AUTH_TOKEN="${m.apiKey}"`,
     `export ANTHROPIC_DEFAULT_OPUS_MODEL="${m.modelID}"`,
     `export ANTHROPIC_DEFAULT_SONNET_MODEL="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_HAIKU_MODEL="${m.modelID}"`
+    `export ANTHROPIC_DEFAULT_HAIKU_MODEL="${m.modelID}"`,
+    `export ANTHROPIC_DEFAULT_FABLE_MODEL="${m.modelID}"`,
+    `export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="${m.modelID}"`,
+    `export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="${m.modelID}"`,
+    `export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="${m.modelID}"`,
+    `export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="${m.modelID}"`,
+    `export ANTHROPIC_MODEL="${m.modelID}"`,
+    `export CLAUDE_CODE_SUBAGENT_MODEL="${m.modelID}"`
   ]
   if (mode === 'plan') lines.push(`export MAX_THINKING_TOKENS=16000`)
   return lines
@@ -109,11 +131,35 @@ async function copyCommand(): Promise<void> {
 }
 
 async function openInTerminal(): Promise<void> {
-  const m = currentModel.value
-  if (!m) {
+  if (!currentModel.value) {
     toast.error(t('switcher.launchNoModel'))
     return
   }
+  // settings.json env silently overrides the terminal env — check first
+  const overrides = await window.electronAPI.getClaudeEnvOverrides()
+  const count = overrides.reduce((n, e) => n + e.keys.length, 0)
+  if (count > 0) {
+    overrideCount.value = count
+    pendingOverrideClean.value = true
+    return
+  }
+  await doLaunch()
+}
+
+async function cleanOverridesAndLaunch(): Promise<void> {
+  pendingOverrideClean.value = false
+  const r = await window.electronAPI.clearClaudeEnvOverrides()
+  if (!r.ok) {
+    toast.error(t('switcher.overrideCleanFail', { error: r.error ?? '' }))
+    return
+  }
+  toast.success(t('switcher.overrideCleaned', { count: r.count ?? 0 }))
+  await doLaunch()
+}
+
+async function doLaunch(): Promise<void> {
+  const m = currentModel.value
+  if (!m) return
   const parts = [...envExports(m, currentMode.value)]
   const runCmd = currentMode.value === 'plan' ? (parts.push(PLAN_ALIAS), 'claude-plan') : 'claude'
   parts.push(`echo "✅ env ready — run: ${runCmd}"`)
