@@ -21,14 +21,14 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: 'GLM (Zhipu)',
     baseUrl: 'https://open.bigmodel.cn/api/anthropic',
     keywords: ['glm', 'bigmodel', 'zhipu', '智谱'],
-    models: ['glm-5.2', 'glm-5.2-air', 'glm-4.6', 'glm-4.5']
+    models: ['glm-5.3', 'glm-5.3-air', 'glm-4.6', 'glm-4.5']
   },
   {
     id: 'minimax',
     name: 'MiniMax',
     baseUrl: 'https://api.minimaxi.com/anthropic',
     keywords: ['minimax'],
-    models: ['MiniMax-M2.1', 'MiniMax-M2', 'MiniMax-Text-01']
+    models: ['MiniMax-M3', 'MiniMax-M2.1', 'MiniMax-M2']
   },
   {
     id: 'deepseek',
@@ -49,7 +49,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: 'Z.ai (GLM global)',
     baseUrl: 'https://api.z.ai/api/anthropic',
     keywords: ['z.ai', 'zai'],
-    models: ['glm-4.6', 'glm-4.5-air']
+    models: ['glm-5.3', 'glm-5.2', 'glm-4.6']
   },
   {
     id: 'qwen',

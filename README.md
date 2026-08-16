@@ -12,7 +12,7 @@ Built with Electron + Vue 3 + TypeScript.
 - Add / edit / duplicate / delete model configs (display name, base URL, API key, model ID)
 - **Drag-and-drop reordering** with a grip handle and drop-position indicator
 - **Provider presets** with URL autocomplete — GLM (Zhipu), MiniMax, DeepSeek, Kimi (Moonshot), Z.ai, Qwen (DashScope)
-- Type a name or model ID (`glm-5.2`, `MiniMax-M2`, …) and the base URL auto-fills
+- Type a name or model ID (`glm-5.3`, `MiniMax-M3`, …) and the base URL auto-fills
 - Quick-pick model ID chips once a provider is matched
 - **Connection test** per model — green toast with latency (`connected in 143ms`) or red toast with the network error
 
@@ -46,22 +46,67 @@ The snippet injected into your terminal (Work mode shown; Plan adds `MAX_THINKIN
 ```bash
 export ANTHROPIC_BASE_URL="https://open.bigmodel.cn/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="sk-..."
-export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_FABLE_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="glm-5.2"
-export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="glm-5.2"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="glm-5.2"
-export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="glm-5.2"
-export ANTHROPIC_MODEL="glm-5.2"
-export CLAUDE_CODE_SUBAGENT_MODEL="glm-5.2"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_FABLE_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="glm-5.3"
+export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="glm-5.3"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="glm-5.3"
+export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="glm-5.3"
+export ANTHROPIC_MODEL="glm-5.3"
+export CLAUDE_CODE_SUBAGENT_MODEL="glm-5.3"
 ```
 
 | Mode | Thinking | How to launch |
 | --- | --- | --- |
 | Plan | ✅ `MAX_THINKING_TOKENS=16000` | `claude-plan` → `claude --permission-mode plan` |
 | Work | ➖ default | `claude` |
+
+## Requirements
+
+| Dependency | Version | Notes |
+| --- | --- | --- |
+| Node.js | ≥ 22 (20.19+ works) | Vite 7 requires Node 20.19+ / 22.12+; tested with Node 26 |
+| pnpm | ≥ 9 | Preferred — the lockfile is `pnpm-lock.yaml` (npm ≥ 10 also works) |
+| macOS | 12+ | Apple Silicon or Intel. Packaging installers needs Xcode Command Line Tools (`xcode-select --install`) |
+
+> Windows/Linux: the UI builds and runs, but **"Open in Terminal" is macOS-only** for now (it uses AppleScript / `.command` files).
+
+### ⚠️ pnpm ≥ 10 note
+
+pnpm 10 blocks dependency postinstall scripts by default, so Electron's binary never downloads and `npm run dev` fails with `Error: Electron uninstall`. Fix:
+
+```bash
+pnpm approve-builds   # select electron (and esbuild)
+```
+
+or add to `package.json` before installing:
+
+```json
+"pnpm": { "onlyBuiltDependencies": ["electron", "esbuild"] }
+```
+
+## Mirrors for mainland China
+
+Speed up dependency and Electron binary downloads:
+
+```bash
+# npm/pnpm registry
+pnpm config set registry https://registry.npmmirror.com
+
+# Electron binary + electron-builder helper binaries
+export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+```
+
+Or commit a project-level `.npmrc`:
+
+```ini
+registry=https://registry.npmmirror.com
+electron_mirror=https://npmmirror.com/mirrors/electron/
+electron_builder_binaries_mirror=https://npmmirror.com/mirrors/electron-builder-binaries/
+```
 
 ## Getting Started
 
@@ -87,7 +132,7 @@ Add an entry to [`src/renderer/src/data/providers.ts`](src/renderer/src/data/pro
   name: 'GLM (Zhipu)',
   baseUrl: 'https://open.bigmodel.cn/api/anthropic',
   keywords: ['glm', 'bigmodel', 'zhipu', '智谱'],
-  models: ['glm-5.2', 'glm-5.2-air', 'glm-4.6', 'glm-4.5']
+  models: ['glm-5.3', 'glm-5.3-air', 'glm-4.6', 'glm-4.5']
 }
 ```
 

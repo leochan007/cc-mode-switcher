@@ -12,7 +12,7 @@
 - 新增 / 编辑 / 复制 / 删除模型配置（显示名称、Base URL、API Key、模型 ID）
 - **拖拽排序**（把手拖动，带上/下落点指示线）
 - **Provider 预设** + URL 自动补全 —— 智谱 GLM、MiniMax、DeepSeek、Kimi（月之暗面）、Z.ai、通义千问（DashScope）
-- 输入名称或模型 ID（`glm-5.2`、`MiniMax-M2`……）自动填入 Base URL
+- 输入名称或模型 ID（`glm-5.3`、`MiniMax-M3`……）自动填入 Base URL
 - 匹配到 Provider 后显示模型 ID 快捷 chips
 - 每个模型可**测试连接** —— 绿色 toast 显示延迟（`连接成功 143ms`），红色 toast 显示网络错误
 
@@ -46,22 +46,67 @@ Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终�
 ```bash
 export ANTHROPIC_BASE_URL="https://open.bigmodel.cn/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="sk-..."
-export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_FABLE_MODEL="glm-5.2"
-export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="glm-5.2"
-export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="glm-5.2"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="glm-5.2"
-export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="glm-5.2"
-export ANTHROPIC_MODEL="glm-5.2"
-export CLAUDE_CODE_SUBAGENT_MODEL="glm-5.2"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_FABLE_MODEL="glm-5.3"
+export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="glm-5.3"
+export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="glm-5.3"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="glm-5.3"
+export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="glm-5.3"
+export ANTHROPIC_MODEL="glm-5.3"
+export CLAUDE_CODE_SUBAGENT_MODEL="glm-5.3"
 ```
 
 | 模式 | Thinking | 启动方式 |
 | --- | --- | --- |
 | Plan | ✅ `MAX_THINKING_TOKENS=16000` | `claude-plan` → `claude --permission-mode plan` |
 | Work | ➖ 默认 | 直接运行 `claude` |
+
+## 编译环境要求
+
+| 依赖 | 版本 | 说明 |
+| --- | --- | --- |
+| Node.js | ≥ 22（20.19+ 亦可） | Vite 7 要求 Node 20.19+ / 22.12+；已在 Node 26 上验证 |
+| pnpm | ≥ 9 | 推荐 —— 锁文件为 `pnpm-lock.yaml`（npm ≥ 10 也可以） |
+| macOS | 12+ | Apple Silicon 或 Intel 均可。打包安装包需要 Xcode 命令行工具（`xcode-select --install`） |
+
+> Windows/Linux：界面可以正常构建运行，但**「在终端中打开」目前仅支持 macOS**（依赖 AppleScript / `.command` 文件）。
+
+### ⚠️ pnpm ≥ 10 注意
+
+pnpm 10 默认拦截依赖的 postinstall 脚本，Electron 二进制不会下载，`npm run dev` 会报 `Error: Electron uninstall`。解决：
+
+```bash
+pnpm approve-builds   # 勾选 electron（和 esbuild）
+```
+
+或在安装前于 `package.json` 中添加：
+
+```json
+"pnpm": { "onlyBuiltDependencies": ["electron", "esbuild"] }
+```
+
+## 国内镜像加速
+
+加速依赖与 Electron 二进制下载：
+
+```bash
+# npm/pnpm 源
+pnpm config set registry https://registry.npmmirror.com
+
+# Electron 二进制 + electron-builder 辅助二进制
+export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+```
+
+或在项目根目录放一个 `.npmrc`：
+
+```ini
+registry=https://registry.npmmirror.com
+electron_mirror=https://npmmirror.com/mirrors/electron/
+electron_builder_binaries_mirror=https://npmmirror.com/mirrors/electron-builder-binaries/
+```
 
 ## 快速开始
 
@@ -87,7 +132,7 @@ npm run dist    # 打包安装包（electron-builder）
   name: 'GLM (Zhipu)',
   baseUrl: 'https://open.bigmodel.cn/api/anthropic',
   keywords: ['glm', 'bigmodel', 'zhipu', '智谱'],
-  models: ['glm-5.2', 'glm-5.2-air', 'glm-4.6', 'glm-4.5']
+  models: ['glm-5.3', 'glm-5.3-air', 'glm-4.6', 'glm-4.5']
 }
 ```
 
