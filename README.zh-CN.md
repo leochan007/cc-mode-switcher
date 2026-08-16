@@ -138,6 +138,16 @@ npm run dist    # 打包安装包（electron-builder）
 
 任何 Anthropic 兼容端点都可用。
 
+## 使用文档
+
+完整的分章节文档在 [`docs/zh/`](docs/guide/zh/)（[English version](docs/)）：
+
+- [快速上手](docs/guide/zh/01-getting-started.md) —— 五步完成首次配置
+- [模型与 Provider 配置](docs/guide/zh/02-models-and-providers.md) —— 预设、环境变量、覆盖防护、模型分工建议
+- [Plan 模式实战](docs/guide/zh/03-plan-mode-playbook.md) —— 生成 plan 文档（中间产物）的方法论与提示词模板
+- [Work 模式实战](docs/guide/zh/04-work-mode-playbook.md) —— 严格按 plan 执行、绝不另起 plan 的铁律
+- [端到端示例](docs/guide/zh/05-workflow-example.md) —— 一个功能从需求到交付的全过程
+
 ## 项目结构
 
 ```

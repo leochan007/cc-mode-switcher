@@ -138,6 +138,16 @@ Add an entry to [`src/renderer/src/data/providers.ts`](src/renderer/src/data/pro
 
 Any Anthropic-compatible endpoint works.
 
+## Documentation
+
+Full chaptered guides live in [`docs/`](docs/) — English by default, [简体中文版](docs/guide/zh/) available:
+
+- [Quick start](docs/guide/01-getting-started.md) — first-time setup in 5 steps
+- [Models & providers](docs/guide/02-models-and-providers.md) — presets, env vars, override guard, model pairing
+- [Plan mode playbook](docs/guide/03-plan-mode-playbook.md) — produce plan documents as the intermediate artifact
+- [Work mode playbook](docs/guide/04-work-mode-playbook.md) — execute the plan strictly, never re-plan mid-flight
+- [End-to-end example](docs/guide/05-workflow-example.md) — one feature from requirement to delivery
+
 ## Project Structure
 
 ```
