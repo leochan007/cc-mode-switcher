@@ -3,15 +3,15 @@
     <div class="card-title">{{ title }}</div>
     <div class="form-grid">
       <div class="form-group">
-        <label>Display Name</label>
-        <input v-model="draft.name" placeholder="e.g. GLM-5.2" />
+        <label>{{ t('form.displayName') }}</label>
+        <input v-model="draft.name" :placeholder="t('form.displayNamePh')" />
       </div>
 
       <div class="form-group url-group">
-        <label>Base URL</label>
+        <label>{{ t('form.baseUrl') }}</label>
         <input
           v-model="draft.baseUrl"
-          placeholder="https://… (type or pick a preset)"
+          :placeholder="t('form.baseUrlPh')"
           @focus="urlFocused = true"
           @blur="urlFocused = false"
         />
@@ -24,13 +24,13 @@
       </div>
 
       <div class="form-group full">
-        <label>API Key</label>
-        <input v-model="draft.apiKey" type="password" placeholder="sk-..." />
+        <label>{{ t('form.apiKey') }}</label>
+        <input v-model="draft.apiKey" type="password" :placeholder="t('form.apiKeyPh')" />
       </div>
 
       <div class="form-group">
-        <label>Model ID</label>
-        <input v-model="draft.modelID" placeholder="glm-5.2" />
+        <label>{{ t('form.modelId') }}</label>
+        <input v-model="draft.modelID" :placeholder="t('form.modelIdPh')" />
         <div v-if="matchedProvider" class="chips">
           <button
             v-for="mid in matchedProvider.models"
@@ -45,7 +45,7 @@
       </div>
     </div>
     <div class="form-actions">
-      <button class="btn-ghost" @click="$emit('cancel')">Cancel</button>
+      <button class="btn-ghost" @click="$emit('cancel')">{{ t('form.cancel') }}</button>
       <button class="btn-success" @click="submit">{{ submitText }}</button>
     </div>
   </div>
@@ -57,6 +57,7 @@ import { emptyModel } from '../types'
 import type { ModelConfig } from '../types'
 import { PROVIDER_PRESETS } from '../data/providers'
 import type { ProviderPreset } from '../data/providers'
+import { useI18n } from '../composables/useI18n'
 
 const props = defineProps<{
   title: string
@@ -69,6 +70,8 @@ const emit = defineEmits<{
   (e: 'save', model: ModelConfig): void
   (e: 'cancel'): void
 }>()
+
+const { t } = useI18n()
 
 // Local copy so editing never mutates the stored model before Save
 const draft = ref<ModelConfig>({ ...(props.initial ?? emptyModel()) })
@@ -111,7 +114,7 @@ function applyProvider(p: ProviderPreset): void {
 function submit(): void {
   const m = draft.value
   if (!m.name || !m.baseUrl || !m.apiKey) {
-    alert('Please fill in Name, Base URL and API Key')
+    alert(t('form.validation'))
     return
   }
   emit('save', { ...m })
@@ -130,8 +133,8 @@ function submit(): void {
   right: 0;
   z-index: 20;
   margin-top: 4px;
-  background: #18181b;
-  border: 1px solid #3f3f46;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   list-style: none;
   max-height: 220px;
@@ -145,10 +148,10 @@ function submit(): void {
   padding: 8px 12px;
   cursor: pointer;
 }
-.suggest li + li { border-top: 1px solid #27272a; }
-.suggest li:hover { background: #27272a; }
-.p-name { font-size: 13px; color: #e4e4e7; font-weight: 500; }
-.p-url { font-size: 11px; color: #71717a; font-family: monospace; }
+.suggest li + li { border-top: 1px solid var(--border); }
+.suggest li:hover { background: var(--bg-hover); }
+.p-name { font-size: 13px; color: var(--text); font-weight: 500; }
+.p-url { font-size: 11px; color: var(--text-dim); font-family: monospace; }
 
 .chips {
   display: flex;
@@ -157,19 +160,20 @@ function submit(): void {
   margin-top: 6px;
 }
 .chip {
-  background: #27272a;
+  background: var(--bg-hover);
   border: 1px solid transparent;
-  color: #a1a1aa;
+  color: var(--text-muted);
   padding: 2px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-family: monospace;
   cursor: pointer;
 }
-.chip:hover { color: #e4e4e7; border-color: #3f3f46; }
+.chip:hover { color: var(--text); border-color: var(--border-strong); }
 .chip.active {
   background: rgba(59, 130, 246, 0.15);
   border-color: #3b82f6;
   color: #93c5fd;
 }
+[data-theme='light'] .chip.active { color: #1d4ed8; }
 </style>

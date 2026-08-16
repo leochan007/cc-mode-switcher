@@ -14,19 +14,19 @@
       <div class="model-name">{{ model.name }}</div>
       <div class="model-url">{{ model.baseUrl }}</div>
       <div class="model-tags">
-        <span class="tag">Model: {{ model.modelID }}</span>
+        <span class="tag">{{ t('card.model') }}: {{ model.modelID }}</span>
       </div>
     </div>
     <div class="actions">
-      <IconButton icon="✏️" tip="Edit" @confirm="$emit('edit')" />
-      <IconButton icon="📋" tip="Duplicate" @confirm="$emit('copy')" />
+      <IconButton :icon="'✏️'" :tip="t('card.edit')" @confirm="$emit('edit')" />
+      <IconButton :icon="'📋'" :tip="t('card.duplicate')" @confirm="$emit('copy')" />
       <IconButton
         :icon="testing ? '⏳' : '📡'"
-        :tip="testing ? 'Testing…' : 'Test connection'"
+        :tip="testing ? t('card.testing') : t('card.test')"
         :disabled="testing"
         @confirm="runTest"
       />
-      <IconButton icon="🗑️" tip="Delete" variant="danger" @confirm="$emit('remove')" />
+      <IconButton :icon="'🗑️'" :tip="t('card.delete')" variant="danger" @confirm="$emit('remove')" />
     </div>
   </div>
 </template>
@@ -35,6 +35,7 @@
 import { ref } from 'vue'
 import type { ModelConfig } from '../types'
 import { useToast } from '../composables/useToast'
+import { useI18n } from '../composables/useI18n'
 import IconButton from './IconButton.vue'
 
 const props = defineProps<{
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { t } = useI18n()
 
 // Dragging only starts from the grip handle, so text/buttons stay clickable
 const draggable = ref(false)
@@ -74,12 +76,12 @@ async function runTest(): Promise<void> {
   try {
     const r = await window.electronAPI.testConnection(props.model.baseUrl)
     if (r.ok) {
-      toast.success(`🟢 ${props.model.name} · connected in ${r.ms}ms (HTTP ${r.status})`)
+      toast.success(t('toast.connected', { name: props.model.name, ms: r.ms, status: r.status ?? '' }))
     } else {
-      toast.error(`🔴 ${props.model.name} · unreachable (${r.error})`)
+      toast.error(t('toast.unreachable', { name: props.model.name, error: r.error ?? '' }))
     }
   } catch {
-    toast.error(`🔴 ${props.model.name} · test failed`)
+    toast.error(t('toast.testFailed', { name: props.model.name }))
   } finally {
     testing.value = false
   }
@@ -92,8 +94,8 @@ async function runTest(): Promise<void> {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #18181b;
-  border: 1px solid #27272a;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px 16px;
   margin-bottom: 10px;
@@ -116,19 +118,19 @@ async function runTest(): Promise<void> {
 
 .grip {
   cursor: grab;
-  color: #52525b;
+  color: var(--text-faint);
   font-size: 16px;
   user-select: none;
   padding: 4px 2px;
 }
-.grip:hover { color: #a1a1aa; }
+.grip:hover { color: var(--text-muted); }
 .grip:active { cursor: grabbing; }
 
 .body { flex: 1; min-width: 0; }
-.model-name { font-weight: 600; font-size: 14px; color: #fafafa; margin-bottom: 2px; }
+.model-name { font-weight: 600; font-size: 14px; color: var(--text-strong); margin-bottom: 2px; }
 .model-url {
   font-size: 12px;
-  color: #71717a;
+  color: var(--text-dim);
   font-family: monospace;
   white-space: nowrap;
   overflow: hidden;

@@ -28,14 +28,14 @@ defineEmits<{ (e: 'confirm'): void }>()
   align-items: center;
   justify-content: center;
   background: transparent;
-  color: #a1a1aa;
-  border: 1px solid #27272a;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s;
 }
-.icon-btn:hover { border-color: #3f3f46; color: #e4e4e7; }
+.icon-btn:hover { border-color: var(--border-strong); color: var(--text); }
 .icon-btn:disabled { opacity: 0.5; cursor: default; }
 
 .icon-btn.primary {
@@ -56,9 +56,9 @@ defineEmits<{ (e: 'confirm'): void }>()
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: #27272a;
-  color: #fafafa;
-  border: 1px solid #3f3f46;
+  background: var(--bg-hover);
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 11px;

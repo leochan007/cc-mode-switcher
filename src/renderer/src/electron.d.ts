@@ -8,8 +8,9 @@ export interface ConnectionTestResult {
 
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
-  installCLI: () => Promise<{ success: boolean; path?: string; error?: string }>
   testConnection: (url: string) => Promise<ConnectionTestResult>
+  selectTerminal: () => Promise<string | null>
+  launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 }
 
 declare global {

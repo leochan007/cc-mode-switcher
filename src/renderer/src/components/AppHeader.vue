@@ -1,31 +1,52 @@
 <template>
   <header class="header">
     <div>
-      <h1>🎯 CC Mode Switcher</h1>
-      <p>Plan / Work Dual-mode environment switcher for Claude Code</p>
+      <h1>🎯 {{ t('app.title') }}</h1>
+      <p>{{ t('app.subtitle') }}</p>
     </div>
-    <nav class="tabs">
-      <button
-        v-for="t in tabs"
-        :key="t.value"
-        :class="['tab', { active: modelValue === t.value }]"
-        @click="$emit('update:modelValue', t.value)"
-      >
-        {{ t.label }}
-      </button>
-    </nav>
+    <div class="header-right">
+      <nav class="tabs">
+        <button
+          v-for="tb in tabs"
+          :key="tb.value"
+          :class="['tab', { active: modelValue === tb.value }]"
+          @click="$emit('update:modelValue', tb.value)"
+        >
+          <span class="tab-icon">{{ tb.icon }}</span>{{ t(tb.key) }}
+        </button>
+      </nav>
+      <div class="quick-controls">
+        <IconButton
+          :icon="locale === 'en' ? 'EN' : '中'"
+          :tip="locale === 'en' ? t('header.toZh') : t('header.toEn')"
+          @confirm="toggleLocale"
+        />
+        <IconButton
+          :icon="theme === 'dark' ? '🌙' : '☀️'"
+          :tip="theme === 'dark' ? t('header.toLight') : t('header.toDark')"
+          @confirm="toggleTheme"
+        />
+      </div>
+    </div>
   </header>
 </template>
 
 <script setup lang="ts">
 import type { Tab } from '../types'
+import { useI18n } from '../composables/useI18n'
+import { useTheme } from '../composables/useTheme'
+import IconButton from './IconButton.vue'
 
 defineProps<{ modelValue: Tab }>()
 defineEmits<{ (e: 'update:modelValue', tab: Tab): void }>()
 
-const tabs: { value: Tab; label: string }[] = [
-  { value: 'models', label: 'Models' },
-  { value: 'switcher', label: 'Switcher' }
+const { locale, t, toggleLocale } = useI18n()
+const { theme, toggleTheme } = useTheme()
+
+const tabs: { value: Tab; key: string; icon: string }[] = [
+  { value: 'switcher', key: 'tabs.switcher', icon: '🔄' },
+  { value: 'models', key: 'tabs.models', icon: '🤖' },
+  { value: 'settings', key: 'tabs.settings', icon: '⚙️' }
 ]
 </script>
 
@@ -35,21 +56,24 @@ const tabs: { value: Tab; label: string }[] = [
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--border);
   -webkit-app-region: drag;
   flex-shrink: 0;
 }
-.header h1 { font-size: 18px; font-weight: 600; color: #fafafa; }
-.header p { font-size: 12px; color: #71717a; margin-top: 2px; }
+.header h1 { font-size: 18px; font-weight: 600; color: var(--text-strong); }
+.header p { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
-.tabs {
+.header-right {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 16px;
   -webkit-app-region: no-drag;
 }
+
+.tabs { display: flex; gap: 8px; }
 .tab {
   background: transparent;
-  color: #a1a1aa;
+  color: var(--text-muted);
   border: 1px solid transparent;
   padding: 6px 16px;
   border-radius: 6px;
@@ -57,10 +81,16 @@ const tabs: { value: Tab; label: string }[] = [
   cursor: pointer;
   transition: all 0.2s;
 }
+.tab-icon {
+  margin-right: 6px;
+  font-size: 13px;
+}
 .tab.active {
-  background: #27272a;
-  color: #fafafa;
-  border-color: #3f3f46;
+  background: var(--bg-hover);
+  color: var(--text-strong);
+  border-color: var(--border-strong);
   font-weight: 500;
 }
+
+.quick-controls { display: flex; gap: 6px; }
 </style>

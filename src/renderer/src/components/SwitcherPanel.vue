@@ -6,19 +6,19 @@
     </div>
 
     <div class="card binding-card">
-      <div class="card-title">Mode Binding</div>
+      <div class="card-title">{{ t('switcher.binding') }}</div>
       <div class="form-grid">
         <div class="form-group">
-          <label>Plan uses model</label>
+          <label>{{ t('switcher.planUses') }}</label>
           <select v-model="planModelId">
-            <option value="">Select...</option>
+            <option value="">{{ t('switcher.select') }}</option>
             <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name }} ({{ m.modelID }})</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Work uses model</label>
+          <label>{{ t('switcher.workUses') }}</label>
           <select v-model="workModelId">
-            <option value="">Select...</option>
+            <option value="">{{ t('switcher.select') }}</option>
             <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name }} ({{ m.modelID }})</option>
           </select>
         </div>
@@ -28,61 +28,78 @@
     <div class="card">
       <div class="command-header">
         <h3>
-          CLI Launch Command
-          <span>(copy and paste into terminal)</span>
+          {{ t('switcher.cliTitle') }}
+          <span>{{ t('switcher.cliHint') }}</span>
         </h3>
         <div class="command-actions">
-          <IconButton icon="🔧" tip="Install CLI tool" @confirm="installCLI" />
+          <IconButton :icon="'▶️'" :tip="t('switcher.launch')" variant="primary" @confirm="openInTerminal" />
           <IconButton
             :icon="copied ? '✅' : '📋'"
-            :tip="copied ? 'Copied!' : 'Copy command'"
-            variant="primary"
+            :tip="copied ? t('switcher.copied') : t('switcher.copy')"
             @confirm="copyCommand"
           />
         </div>
       </div>
       <textarea class="command" readonly :value="command"></textarea>
-      <div class="command-tip">
-        💡 After execution, a new Claude Code session starts in
-        <strong>{{ currentMode === 'plan' ? 'Plan (analysis/design)' : 'Work (coding/execution)' }}</strong> mode
-      </div>
+      <div class="command-tip">{{ t('switcher.tip') }}</div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Mode } from '../types'
+import type { Mode, ModelConfig } from '../types'
 import { useModels } from '../composables/useModels'
+import { useI18n } from '../composables/useI18n'
+import { useTerminal } from '../composables/useTerminal'
+import { useToast } from '../composables/useToast'
 import { copyText } from '../utils/clipboard'
 import ModeCard from './ModeCard.vue'
 import IconButton from './IconButton.vue'
 
 const { models, planModelId, workModelId, planModel, workModel } = useModels()
+const { t } = useI18n()
+const { launchInTerminal } = useTerminal()
+const toast = useToast()
 
 const currentMode = ref<Mode>('plan')
 const copied = ref(false)
 
-const command = computed(() => {
-  const m = currentMode.value === 'plan' ? planModel.value : workModel.value
-  if (!m) {
-    return '# Please add a model in "Models" tab and bind it in "Switcher" tab first'
-  }
+const currentModel = computed(() => (currentMode.value === 'plan' ? planModel.value : workModel.value))
 
-  const modelId = m.modelID
-  return [
-    '# Set Claude Code to use custom endpoint',
+/** Plain export lines pointing every Claude Code role at the bound model */
+function envExports(m: ModelConfig, mode: Mode): string[] {
+  const lines = [
     `export ANTHROPIC_BASE_URL="${m.baseUrl}"`,
     `export ANTHROPIC_AUTH_TOKEN="${m.apiKey}"`,
+    `export ANTHROPIC_DEFAULT_OPUS_MODEL="${m.modelID}"`,
+    `export ANTHROPIC_DEFAULT_SONNET_MODEL="${m.modelID}"`,
+    `export ANTHROPIC_DEFAULT_HAIKU_MODEL="${m.modelID}"`
+  ]
+  if (mode === 'plan') lines.push(`export MAX_THINKING_TOKENS=16000`)
+  return lines
+}
+
+/** The one alias: plan permission mode + nothing else (env comes from exports) */
+const PLAN_ALIAS = "alias claude-plan='claude --permission-mode plan'"
+
+const command = computed(() => {
+  const m = currentModel.value
+  if (!m) return t('switcher.needModel')
+
+  const lines = [
+    '# Set Claude Code to use custom endpoint',
+    ...envExports(m, currentMode.value).slice(0, 2),
     '',
     '# Map model aliases so all Claude Code roles point to this model',
-    `export ANTHROPIC_DEFAULT_OPUS_MODEL="${modelId}"`,
-    `export ANTHROPIC_DEFAULT_SONNET_MODEL="${modelId}"`,
-    `export ANTHROPIC_DEFAULT_HAIKU_MODEL="${modelId}"`,
-    '',
-    `# Launch Claude Code (current mode: ${currentMode.value === 'plan' ? 'Plan' : 'Work'})`,
-    'claude'
-  ].join('\n')
+    ...envExports(m, currentMode.value).slice(2)
+  ]
+  if (currentMode.value === 'plan') {
+    lines.push('', '# Plan mode: extended thinking + plan permission alias', PLAN_ALIAS)
+  } else {
+    lines.push('', '# Work mode: default permissions — just run claude')
+  }
+  return lines.join('\n')
 })
 
 async function copyCommand(): Promise<void> {
@@ -91,12 +108,20 @@ async function copyCommand(): Promise<void> {
   setTimeout(() => (copied.value = false), 2000)
 }
 
-async function installCLI(): Promise<void> {
-  const result = await window.electronAPI.installCLI()
-  if (result.success) {
-    alert(`✅ Installed to ${result.path}\n\nYou can now run in terminal:\ncc-mode-switcher`)
-  } else {
-    alert('❌ Installation failed: ' + result.error)
+async function openInTerminal(): Promise<void> {
+  const m = currentModel.value
+  if (!m) {
+    toast.error(t('switcher.launchNoModel'))
+    return
+  }
+  const parts = [...envExports(m, currentMode.value)]
+  const runCmd = currentMode.value === 'plan' ? (parts.push(PLAN_ALIAS), 'claude-plan') : 'claude'
+  parts.push(`echo "✅ env ready — run: ${runCmd}"`)
+  const r = await launchInTerminal(parts.join('; '))
+  if (r.ok) {
+    toast.success(t('switcher.launchOk'))
+  } else if (r.error !== 'cancelled') {
+    toast.error(t('switcher.launchFail', { error: r.error ?? '' }))
   }
 }
 </script>
@@ -117,16 +142,16 @@ async function installCLI(): Promise<void> {
   align-items: center;
   margin-bottom: 10px;
 }
-.command-header h3 { font-size: 14px; color: #fafafa; }
-.command-header h3 span { font-weight: normal; color: #71717a; font-size: 12px; }
+.command-header h3 { font-size: 14px; color: var(--text-strong); }
+.command-header h3 span { font-weight: normal; color: var(--text-dim); font-size: 12px; }
 .command-actions { display: flex; gap: 8px; }
 
 .command {
   width: 100%;
-  height: 140px;
-  background: #09090b;
-  border: 1px solid #27272a;
-  color: #4ade80;
+  height: 170px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--code-green);
   padding: 12px;
   border-radius: 6px;
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
@@ -139,7 +164,6 @@ async function installCLI(): Promise<void> {
 .command-tip {
   margin-top: 8px;
   font-size: 11px;
-  color: #71717a;
+  color: var(--text-dim);
 }
-.command-tip strong { color: #d4d4d8; }
 </style>

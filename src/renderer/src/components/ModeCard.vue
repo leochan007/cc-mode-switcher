@@ -1,16 +1,17 @@
 <template>
   <div :class="['mode-card', mode, { active }]" @click="$emit('select')">
     <div class="emoji">{{ meta.emoji }}</div>
-    <div class="title">{{ meta.title }}</div>
-    <div class="desc">{{ meta.desc }}</div>
+    <div class="title">{{ t(`switcher.${mode}Title`) }}</div>
+    <div class="desc">{{ t(`switcher.${mode}Desc`) }}</div>
     <div v-if="model" class="badge">{{ model.name }} · {{ model.modelID }}</div>
-    <div v-else class="warning">⚠️ No model bound</div>
+    <div v-else class="warning">{{ t('switcher.noModel') }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Mode, ModelConfig } from '../types'
+import { useI18n } from '../composables/useI18n'
 
 const props = defineProps<{
   mode: Mode
@@ -20,11 +21,13 @@ const props = defineProps<{
 
 defineEmits<{ (e: 'select'): void }>()
 
+const { t } = useI18n()
+
 const meta = computed(
   () =>
     ({
-      plan: { emoji: '🧠', title: 'Plan Mode', desc: 'Architecture analysis / Design / Code review' },
-      work: { emoji: '⚡', title: 'Work Mode', desc: 'Implementation / Debug / File operations' }
+      plan: { emoji: '🧠' },
+      work: { emoji: '⚡' }
     })[props.mode]
 )
 </script>
@@ -35,31 +38,31 @@ const meta = computed(
   padding: 24px;
   cursor: pointer;
   transition: all 0.2s;
-  border: 2px solid #27272a;
-  background: #18181b;
+  border: 2px solid var(--border);
+  background: var(--bg-card);
 }
-.mode-card:hover { border-color: #3f3f46; }
+.mode-card:hover { border-color: var(--border-strong); }
 .mode-card.active.plan {
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+  background: var(--plan-grad);
   border-color: #3b82f6;
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
 }
 .mode-card.active.work {
-  background: linear-gradient(135deg, #3f1e5f 0%, #0f172a 100%);
+  background: var(--work-grad);
   border-color: #a855f7;
   box-shadow: 0 0 20px rgba(168, 85, 247, 0.15);
 }
 .emoji { font-size: 32px; margin-bottom: 10px; }
-.title { font-weight: 700; font-size: 16px; margin-bottom: 4px; color: #fafafa; }
-.desc { font-size: 12px; color: #a1a1aa; }
+.title { font-weight: 700; font-size: 16px; margin-bottom: 4px; color: var(--text-strong); }
+.desc { font-size: 12px; color: var(--text-muted); }
 .badge {
   margin-top: 10px;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--badge-bg);
   padding: 4px 10px;
   border-radius: 6px;
   display: inline-block;
-  color: #e4e4e7;
+  color: var(--badge-text);
 }
 .warning { margin-top: 10px; font-size: 12px; color: #fbbf24; }
 </style>

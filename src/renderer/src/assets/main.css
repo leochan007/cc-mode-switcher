@@ -1,14 +1,55 @@
+/* ---------- theme tokens ---------- */
+:root {
+  --bg: #09090b;            /* app background */
+  --bg-card: #18181b;       /* card surface */
+  --bg-hover: #27272a;      /* hover / active surface (tabs, tags, tooltip) */
+  --border: #27272a;
+  --border-strong: #3f3f46;
+  --text: #e4e4e7;
+  --text-strong: #fafafa;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --text-faint: #52525b;
+  --scrollbar-thumb: #27272a;
+  --scrollbar-thumb-hover: #3f3f46;
+  --code-green: #4ade80;
+  --plan-grad: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+  --work-grad: linear-gradient(135deg, #3f1e5f 0%, #0f172a 100%);
+  --badge-bg: rgba(255, 255, 255, 0.1);
+  --badge-text: #e4e4e7;
+}
+
+[data-theme='light'] {
+  --bg: #f4f4f5;
+  --bg-card: #ffffff;
+  --bg-hover: #e4e4e7;
+  --border: #d4d4d8;
+  --border-strong: #71717a;
+  --text: #27272a;
+  --text-strong: #09090b;
+  --text-muted: #3f3f46;
+  --text-dim: #52525b;
+  --text-faint: #71717a;
+  --scrollbar-thumb: #d4d4d8;
+  --scrollbar-thumb-hover: #a1a1aa;
+  --code-green: #15803d;
+  --plan-grad: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  --work-grad: linear-gradient(135deg, #f3e8ff 0%, #faf5ff 100%);
+  --badge-bg: rgba(0, 0, 0, 0.06);
+  --badge-text: #1f2937;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #09090b;
-  color: #e4e4e7;
+  background: var(--bg);
+  color: var(--text);
 }
 
 #app {
-  background: #09090b;
-  color: #e4e4e7;
+  background: var(--bg);
+  color: var(--text);
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -17,15 +58,15 @@ body {
 
 /* ---------- cards ---------- */
 .card {
-  background: #18181b;
-  border: 1px solid #27272a;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
 }
 .card-title {
   font-size: 14px;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--text-strong);
   margin-bottom: 12px;
 }
 
@@ -35,12 +76,12 @@ body {
   align-items: center;
   margin-bottom: 16px;
 }
-.section-header h2 { font-size: 16px; color: #d4d4d8; }
+.section-header h2 { font-size: 16px; color: var(--text); }
 
 .empty {
   text-align: center;
   padding: 48px;
-  color: #71717a;
+  color: var(--text-dim);
   font-size: 14px;
 }
 
@@ -73,19 +114,19 @@ body {
 
 .btn-ghost {
   background: transparent;
-  color: #a1a1aa;
-  border: 1px solid #27272a;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 13px;
   cursor: pointer;
 }
-.btn-ghost:hover { border-color: #3f3f46; color: #e4e4e7; }
+.btn-ghost:hover { border-color: var(--border-strong); color: var(--text); }
 
 .btn-danger {
   background: transparent;
   color: #ef4444;
-  border: 1px solid #3f3f46;
+  border: 1px solid var(--border-strong);
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -103,15 +144,15 @@ body {
 .form-group label {
   display: block;
   font-size: 12px;
-  color: #a1a1aa;
+  color: var(--text-muted);
   margin-bottom: 4px;
 }
 .form-group input,
 .form-group select {
   width: 100%;
-  background: #09090b;
-  border: 1px solid #27272a;
-  color: #e4e4e7;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 13px;
@@ -127,18 +168,44 @@ body {
   margin-top: 12px;
 }
 
+/* ---------- segmented control (settings) ---------- */
+.segmented {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.segmented button {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 6px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.segmented button:hover { color: var(--text); }
+.segmented button.active {
+  background: #3b82f6;
+  color: white;
+  font-weight: 500;
+}
+
 /* ---------- misc ---------- */
 .tag {
   display: inline-block;
-  background: #27272a;
+  background: var(--bg-hover);
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
-  color: #a1a1aa;
+  color: var(--text-muted);
   margin-right: 6px;
 }
 
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: #09090b; }
-::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }

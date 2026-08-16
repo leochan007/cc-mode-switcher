@@ -1,12 +1,12 @@
 <template>
   <Teleport to="body">
-    <div class="modal-overlay" @click.self="$emit('cancel')" @keydown.esc="$emit('cancel')">
+    <div class="modal-overlay" @click.self="emit('cancel')" @keydown.esc="emit('cancel')">
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-title">{{ title }}</div>
         <div class="modal-message">{{ message }}</div>
         <div class="modal-actions">
-          <button class="btn-ghost" @click="$emit('cancel')">Cancel</button>
-          <button :class="danger ? 'btn-danger-solid' : 'btn-primary'" ref="confirmBtn" @click="$emit('confirm')">
+          <button class="btn-ghost" @click="emit('cancel')">{{ t('modal.cancel') }}</button>
+          <button :class="danger ? 'btn-danger-solid' : 'btn-primary'" ref="confirmBtn" @click="emit('confirm')">
             {{ confirmText }}
           </button>
         </div>
@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from '../composables/useI18n'
 
 withDefaults(
   defineProps<{
@@ -32,6 +33,8 @@ const emit = defineEmits<{
   (e: 'confirm'): void
   (e: 'cancel'): void
 }>()
+
+const { t } = useI18n()
 
 const confirmBtn = ref<HTMLButtonElement | null>(null)
 
@@ -59,8 +62,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 .modal {
   width: 360px;
-  background: #18181b;
-  border: 1px solid #3f3f46;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
@@ -69,13 +72,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .modal-title {
   font-size: 15px;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--text-strong);
   margin-bottom: 8px;
 }
 
 .modal-message {
   font-size: 13px;
-  color: #a1a1aa;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-bottom: 18px;
   word-break: break-all;

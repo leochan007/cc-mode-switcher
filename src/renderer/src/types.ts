@@ -7,7 +7,7 @@ export interface ModelConfig {
 }
 
 export type Mode = 'plan' | 'work'
-export type Tab = 'models' | 'switcher'
+export type Tab = 'models' | 'switcher' | 'settings'
 
 export interface CLIResult {
   success: boolean

@@ -1,11 +1,11 @@
 <template>
   <section>
     <div class="section-header">
-      <h2>Configured Models</h2>
+      <h2>{{ t('models.title') }}</h2>
       <IconButton
         v-if="!showAdd && !editingId"
         icon="➕"
-        tip="Add model"
+        :tip="t('models.addTip')"
         variant="primary"
         @confirm="openAdd"
       />
@@ -15,16 +15,14 @@
     <ModelForm
       v-if="showAdd || editingId"
       :key="editingId ?? 'new'"
-      :title="editingId ? 'Edit Model' : 'Add Model'"
-      :submit-text="editingId ? 'Save Changes' : 'Add Model'"
+      :title="editingId ? t('form.editTitle') : t('form.addTitle')"
+      :submit-text="editingId ? t('form.submitEdit') : t('form.submitAdd')"
       :initial="editingModel"
       @save="onSave"
       @cancel="closeForm"
     />
 
-    <div v-if="models.length === 0" class="empty">
-      No models configured yet. Click the button above to add one.
-    </div>
+    <div v-if="models.length === 0" class="empty">{{ t('models.empty') }}</div>
     <div v-else>
       <ModelCard
         v-for="(m, i) in models"
@@ -45,9 +43,9 @@
     <!-- delete confirmation -->
     <ConfirmModal
       v-if="deletingModel"
-      title="Delete model"
-      :message="`Delete '${deletingModel.name}'? This cannot be undone.`"
-      confirm-text="Delete"
+      :title="t('modal.deleteTitle')"
+      :message="t('modal.deleteMessage', { name: deletingModel.name })"
+      :confirm-text="t('modal.delete')"
       danger
       @confirm="onRemove(deletingModel)"
       @cancel="deletingId = null"
@@ -60,6 +58,7 @@ import { ref, computed } from 'vue'
 import type { ModelConfig } from '../types'
 import { useModels } from '../composables/useModels'
 import { useToast } from '../composables/useToast'
+import { useI18n } from '../composables/useI18n'
 import ModelForm from './ModelForm.vue'
 import ModelCard from './ModelCard.vue'
 import IconButton from './IconButton.vue'
@@ -67,6 +66,7 @@ import ConfirmModal from './ConfirmModal.vue'
 
 const { models, addModel, updateModel, removeModel, moveModel, duplicateModel } = useModels()
 const toast = useToast()
+const { t } = useI18n()
 
 // ----- add / edit -----
 const showAdd = ref(false)
@@ -97,7 +97,7 @@ function onSave(model: ModelConfig): void {
 
 function onCopy(m: ModelConfig): void {
   const copy = duplicateModel(m.id)
-  if (copy) toast.success(`📋 Duplicated as "${copy.name}"`)
+  if (copy) toast.success(t('toast.duplicated', { name: copy.name }))
 }
 
 // ----- delete (modal confirm) -----
