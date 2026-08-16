@@ -1,20 +1,6 @@
 # 📚 CC Mode Switcher Documentation
 
-**English** | [简体中文](/guide/zh/)
-
-## Screenshots
-
-**Switcher** — bind a model per mode and launch
-
-![Switcher](/images/switcher_main.png)
-
-**Models** — provider presets, autocomplete, connection test, drag sorting
-
-![Models](/images/model_config.png)
-
-**Settings** — theme, language, terminal picker, override guard
-
-![Settings](/images/system_settings.png)
+**English** | [简体中文](/zh/)
 
 ## Chapters
 

@@ -6,6 +6,12 @@ Plan / Work dual-mode environment switcher for [Claude Code](https://claude.com/
 
 Built with Electron + Vue 3 + TypeScript.
 
+## Design Philosophy
+
+The idea comes from how Anthropic routes work internally: planning-shaped tasks go to certain models, execution-shaped tasks to others. Think of a company — the cognition you expect in leadership is different from what you need in the execution layer; the people who make the plan and the people who carry it out are never the same group, and their cost is never the same either.
+
+This tool can't be that smart. It draws the simplest possible line — **plan vs. everything else** — and, because it sits on top of Claude Code, leaves the routing decision to a human convention: *you* decide which model thinks (Plan) and which model executes (Work). Expensive reasoning tokens are spent only where they matter; cheap models do the mechanical work.
+
 ## Features
 
 ### 🤖 Model Management
@@ -16,10 +22,14 @@ Built with Electron + Vue 3 + TypeScript.
 - Quick-pick model ID chips once a provider is matched
 - **Connection test** per model — green toast with latency (`connected in 143ms`) or red toast with the network error
 
+![Model management](docs/public/images/model_config.png)
+
 ### 🔄 Plan / Work Switcher
 - Bind one model per mode; duplicates land right below the original (`X copy`, `X copy (1)`, …)
 - Delete requires confirmation via modal dialog
 - Generates a ready-to-paste shell snippet for the selected mode
+
+![Plan/Work switcher](docs/public/images/switcher_main.png)
 
 ### ▶️ Open in Terminal
 - First use: pick your terminal app (Terminal.app, iTerm, or any other — falls back to a generated `.command` file)
@@ -38,6 +48,8 @@ Claude Code's `~/.claude/settings.json` `env` block takes **precedence over term
 - Icon-only action buttons with hover tooltips
 - Centered toast notifications
 - Everything persists in `localStorage`
+
+![Settings](docs/public/images/system_settings.png)
 
 ## Generated Environment
 
@@ -140,7 +152,7 @@ Any Anthropic-compatible endpoint works.
 
 ## Documentation
 
-Full chaptered guides live in [`docs/`](docs/) — English by default, [简体中文版](docs/guide/zh/) available:
+Full chaptered guides live in [`docs/`](docs/) — English by default, [简体中文版](docs/zh/) available:
 
 - [Quick start](docs/guide/01-getting-started.md) — first-time setup in 5 steps
 - [Models & providers](docs/guide/02-models-and-providers.md) — presets, env vars, override guard, model pairing

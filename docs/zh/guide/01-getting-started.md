@@ -12,6 +12,8 @@
 4. 填入 **API Key**；匹配到 Provider 后点击下方 **模型 ID chips** 快速填入 Model ID
 5. Save 保存
 
+![模型管理](/images/model_config.png)
+
 建议至少添加两个模型：一个给 Plan（推理强）、一个给 Work（快/便宜），见 [02 章 · 模型分工建议](02-models-and-providers.md#模型分工建议)。
 
 ### 第 2 步：测试连接
@@ -30,6 +32,8 @@
 
 两张模式卡片会显示各自绑定的模型徽章。
 
+![Plan/Work 切换器](/images/switcher_main.png)
+
 ### 第 4 步：选择终端
 
 点命令区的 ▶️（首次会弹出文件选择器）：
@@ -38,6 +42,8 @@
 - 其他终端也可选，会以生成 `.command` 脚本的方式回退支持
 
 之后可随时在 **⚙️ Settings → Terminal** 里修改。
+
+![设置](/images/system_settings.png)
 
 ### 第 5 步：打开终端开始干活
 

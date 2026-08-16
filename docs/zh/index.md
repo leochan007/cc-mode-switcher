@@ -2,29 +2,15 @@
 
 [English](/) | **简体中文**
 
-## 界面截图
-
-**切换器** —— 两种模式各绑一个模型，一键启动
-
-![切换器](/images/switcher_main.png)
-
-**模型管理** —— Provider 预设、自动补全、连接测试、拖拽排序
-
-![模型管理](/images/model_config.png)
-
-**设置** —— 主题、语言、终端选择、覆盖防护
-
-![设置](/images/system_settings.png)
-
 ## 目录
 
 | 章节 | 内容 | 适合谁 |
 | --- | --- | --- |
-| [01 · 快速上手](01-getting-started.md) | 安装后 5 分钟完成首次配置并启动第一次会话 | 新用户 |
-| [02 · 模型与 Provider 配置](02-models-and-providers.md) | 预设、自动补全、连接测试、环境变量清单、覆盖防护 | 所有用户 |
-| [03 · Plan 模式实战](03-plan-mode-playbook.md) | 用 Plan 模式生成 plan 文档（中间产物），不动代码 | 核心工作流 |
-| [04 · Work 模式实战](04-work-mode-playbook.md) | 严格按 plan 文档执行，**绝不另起 plan** | 核心工作流 |
-| [05 · 端到端示例](05-workflow-example.md) | 一个完整功能从 Plan 到 Work 落地的全过程 | 想看真实用法的人 |
+| [01 · 快速上手](/zh/guide/01-getting-started) | 安装后 5 分钟完成首次配置并启动第一次会话 | 新用户 |
+| [02 · 模型与 Provider 配置](/zh/guide/02-models-and-providers) | 预设、自动补全、连接测试、环境变量清单、覆盖防护 | 所有用户 |
+| [03 · Plan 模式实战](/zh/guide/03-plan-mode-playbook) | 用 Plan 模式生成 plan 文档（中间产物），不动代码 | 核心工作流 |
+| [04 · Work 模式实战](/zh/guide/04-work-mode-playbook) | 严格按 plan 文档执行，**绝不另起 plan** | 核心工作流 |
+| [05 · 端到端示例](/zh/guide/05-workflow-example) | 一个完整功能从 Plan 到 Work 落地的全过程 | 想看真实用法的人 |
 
 ## 核心理念
 

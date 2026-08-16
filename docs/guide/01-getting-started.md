@@ -12,6 +12,8 @@
 4. Enter your **API Key**; once a provider is matched, click the **model ID chips** to fill the Model ID
 5. Save
 
+![Model management](/images/model_config.png)
+
 Add at least two models — one for Plan (strong reasoning), one for Work (fast/cheap). See [chapter 02 · model pairing](02-models-and-providers.md#model-pairing).
 
 ### Step 2: Test the connection
@@ -30,6 +32,8 @@ Switch to the **🔄 Switcher** tab, in **Mode Binding**:
 
 Both mode cards show the bound model badge.
 
+![Plan/Work switcher](/images/switcher_main.png)
+
 ### Step 4: Choose a terminal
 
 Click ▶️ in the command area (first use opens a file picker):
@@ -38,6 +42,8 @@ Click ▶️ in the command area (first use opens a file picker):
 - Other terminals work too, via a generated `.command` file fallback
 
 Change it anytime in **⚙️ Settings → Terminal**.
+
+![Settings](/images/system_settings.png)
 
 ### Step 5: Open a terminal and start
 

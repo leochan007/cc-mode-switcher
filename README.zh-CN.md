@@ -6,6 +6,12 @@
 
 基于 Electron + Vue 3 + TypeScript 构建。
 
+## 设计初衷
+
+灵感来自 Anthropic 内部的任务自动路由：偏 plan 的任务会走某些模型，偏执行的任务会走其他模型。就像一家公司——高层的智商和认知与底层员工不同，做 plan 的和做 execution 的本来就不是一拨人，薪资成本自然也不同。
+
+本工具做不到那么智能，只画了一条最简单的分界线——**plan 与非 plan**。因为对接的是 Claude Code，路由就交给人为约定：由你决定哪个模型负责思考（Plan）、哪个负责执行（Work）。昂贵的推理 token 只花在刀刃上，机械执行交给便宜的模型。
+
 ## 功能
 
 ### 🤖 模型管理
@@ -16,10 +22,14 @@
 - 匹配到 Provider 后显示模型 ID 快捷 chips
 - 每个模型可**测试连接** —— 绿色 toast 显示延迟（`连接成功 143ms`），红色 toast 显示网络错误
 
+![模型管理](docs/public/images/model_config.png)
+
 ### 🔄 Plan / Work 切换器
 - 两种模式各绑定一个模型；复制生成的配置紧跟原条目下方（`X copy`、`X copy (1)`……）
 - 删除需经 Modal 对话框二次确认
 - 按当前模式生成可直接粘贴的 shell 片段
+
+![Plan/Work 切换器](docs/public/images/switcher_main.png)
 
 ### ▶️ 在终端中打开
 - 首次使用：通过文件选择器选择终端应用（Terminal.app、iTerm 或其他 —— 通用回退为生成 `.command` 文件）
@@ -38,6 +48,8 @@ Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终�
 - 图标按钮 + 悬停 tooltip
 - 居中显示的 toast 通知
 - 所有配置持久化到 `localStorage`
+
+![设置](docs/public/images/system_settings.png)
 
 ## 生成的环境变量
 
@@ -140,13 +152,13 @@ npm run dist    # 打包安装包（electron-builder）
 
 ## 使用文档
 
-完整的分章节文档在 [`docs/zh/`](docs/guide/zh/)（[English version](docs/)）：
+完整的分章节文档在 [`docs/zh/`](docs/zh/)（[English version](docs/)）：
 
-- [快速上手](docs/guide/zh/01-getting-started.md) —— 五步完成首次配置
-- [模型与 Provider 配置](docs/guide/zh/02-models-and-providers.md) —— 预设、环境变量、覆盖防护、模型分工建议
-- [Plan 模式实战](docs/guide/zh/03-plan-mode-playbook.md) —— 生成 plan 文档（中间产物）的方法论与提示词模板
-- [Work 模式实战](docs/guide/zh/04-work-mode-playbook.md) —— 严格按 plan 执行、绝不另起 plan 的铁律
-- [端到端示例](docs/guide/zh/05-workflow-example.md) —— 一个功能从需求到交付的全过程
+- [快速上手](docs/zh/guide/01-getting-started.md) —— 五步完成首次配置
+- [模型与 Provider 配置](docs/zh/guide/02-models-and-providers.md) —— 预设、环境变量、覆盖防护、模型分工建议
+- [Plan 模式实战](docs/zh/guide/03-plan-mode-playbook.md) —— 生成 plan 文档（中间产物）的方法论与提示词模板
+- [Work 模式实战](docs/zh/guide/04-work-mode-playbook.md) —— 严格按 plan 执行、绝不另起 plan 的铁律
+- [端到端示例](docs/zh/guide/05-workflow-example.md) —— 一个功能从需求到交付的全过程
 
 ## 项目结构
 
