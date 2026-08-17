@@ -51,7 +51,7 @@
       <div class="card-title">{{ t('settings.about') }}</div>
       <div class="setting-row">
         <span class="setting-label">{{ t('settings.version') }}</span>
-        <span class="version">v1.0.0</span>
+        <span class="version">v1.0.1</span>
       </div>
     </div>
   </section>
