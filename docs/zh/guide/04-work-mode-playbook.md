@@ -5,7 +5,7 @@
 ## 启动 Work 模式
 
 1. 应用里选中 **⚡ Work Mode** 卡片（绑定执行模型）
-2. ▶️ Open in terminal → 直接运行 `claude`（默认权限，可写文件、跑命令）
+2. ▶️ Open in terminal → 输入 `cc-w`（默认权限，可写文件、跑命令；和 `cc-p` 同样走 `--settings` + `--setting-sources ""` 机制）
 
 ## Work 会话开场提示词（复制即用）
 
@@ -44,7 +44,7 @@ Work 执行中撞上 plan 未覆盖的情况
 立即停止，输出：撞上了什么 / 为什么 plan 覆盖不了 / 建议回 Plan 修订哪些条目
         │
         ▼
-切换 Plan 终端（claude-plan）→ 修订 docs/plans/NNN-….md → 人工 re-approve
+切换 Plan 终端（`cc-p`）→ 修订 docs/plans/NNN-….md → 人工 re-approve
         │
         ▼
 回到 Work 终端：@docs/plans/NNN-….md 已更新，从任务 X 继续

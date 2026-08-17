@@ -48,7 +48,7 @@ macOS / Windows / Linux 安装包通过 **三个手动工作流**发布到 GitHu
 - **Set version & tag** —— 升级（patch / minor / major）、降级、或任意版本。提交 `release vX.Y.Z` 并推 tag
 - **Release Electron App** —— 三平台并行构建，创建 / 更新 GitHub Release
 
-完整操作指南：[发布与版本管理](/zh/guide/06-release-workflow)。
+完整操作指南：[发布与版本管理](/zh/guide/07-release-versioning)。
 
 ### ⚙️ 设置与细节
 - 🌙 深色（默认）/ ☀️ 浅色主题 —— 基于 CSS 变量，头部或设置页均可切换
@@ -115,7 +115,7 @@ alias cc-p='claude --permission-mode plan --setting-sources "" --settings "$CC_M
 
 | 依赖 | 版本 | 说明 |
 | --- | --- | --- |
-| Node.js | ≥ 22（20.19+ 亦可） | Vite 7 要求 Node 20.19+ / 22.12+；已在 Node 26 上验证 |
+| Node.js | ≥ 22（推荐 24+） | Vite 7 要求 Node 20.19+ / 22.12+；本项目以 Node 24 为目标 |
 | pnpm | ≥ 9 | 推荐 —— 锁文件为 `pnpm-lock.yaml`（npm ≥ 10 也可以） |
 | macOS | 12+ | Apple Silicon 或 Intel 均可。打包安装包需要 Xcode 命令行工具（`xcode-select --install`） |
 
@@ -195,7 +195,8 @@ npm run dist    # 打包安装包（electron-builder）
 - [Plan 模式实战](docs/zh/guide/03-plan-mode-playbook.md) —— 生成 plan 文档（中间产物）的方法论与提示词模板
 - [Work 模式实战](docs/zh/guide/04-work-mode-playbook.md) —— 严格按 plan 执行、绝不另起 plan 的铁律
 - [端到端示例](docs/zh/guide/05-workflow-example.md) —— 一个功能从需求到交付的全过程
-- [发布与版本管理](docs/zh/guide/06-release-workflow.md) —— GitHub Actions 工作流：云端构建、升级 / 降级、发布 GitHub Release（全手动，零本地命令）
+- [发布与版本管理](docs/zh/guide/07-release-versioning.md) —— GitHub Actions 工作流：云端构建、升级 / 降级、发布 GitHub Release（全手动，零本地命令）
+- [本地构建](docs/zh/guide/06-local-build.md) —— 干净重建：清除 node_modules、pnpm store、electron / electron-builder 缓存后重新安装（`pnpm run dev` / `pnpm run dist` 出问题时）
 
 ## 项目结构
 

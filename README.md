@@ -48,7 +48,7 @@ macOS / Windows / Linux installers are published to GitHub Releases by **three m
 - **Set version & tag** — bump up (`patch` / `minor` / `major`), downgrade, or set any version. Writes a `release vX.Y.Z` commit and pushes the tag
 - **Release Electron App** — builds the three OS targets in parallel and creates / updates the GitHub Release
 
-Full operational guide: [Release & Versioning Workflow](docs/guide/06-release-workflow.md).
+Full operational guide: [Release & Versioning Workflow](docs/guide/07-release-versioning.md).
 
 ### ⚙️ Settings & Polish
 - 🌙 Dark (default) / ☀️ Light theme — CSS-variable based, toggle in the header or Settings
@@ -115,7 +115,7 @@ Selecting the Work card instead regenerates the same block with Work's bindings 
 
 | Dependency | Version | Notes |
 | --- | --- | --- |
-| Node.js | ≥ 22 (20.19+ works) | Vite 7 requires Node 20.19+ / 22.12+; tested with Node 26 |
+| Node.js | ≥ 22 (24+ recommended) | Vite 7 requires Node 20.19+ / 22.12+; this project targets Node 24 |
 | pnpm | ≥ 9 | Preferred — the lockfile is `pnpm-lock.yaml` (npm ≥ 10 also works) |
 | macOS | 12+ | Apple Silicon or Intel. Packaging installers needs Xcode Command Line Tools (`xcode-select --install`) |
 
@@ -195,7 +195,8 @@ Full chaptered guides live in [`docs/`](docs/) — English by default, [简体�
 - [Plan mode playbook](docs/guide/03-plan-mode-playbook.md) — produce plan documents as the intermediate artifact
 - [Work mode playbook](docs/guide/04-work-mode-playbook.md) — execute the plan strictly, never re-plan mid-flight
 - [End-to-end example](docs/guide/05-workflow-example.md) — one feature from requirement to delivery
-- [Release & versioning workflow](docs/guide/06-release-workflow.md) — GitHub Actions workflows for cloud builds, version up / down, GitHub Releases (all manual, no local CLI)
+- [Release & versioning workflow](docs/guide/07-release-versioning.md) — GitHub Actions workflows for cloud builds, version up / down, GitHub Releases (all manual, no local CLI)
+- [Local build](docs/guide/06-local-build.md) — clean install: clear node_modules, pnpm store, electron / electron-builder caches, then reinstall (when `pnpm run dev` / `pnpm run dist` misbehaves)
 
 ## Project Structure
 

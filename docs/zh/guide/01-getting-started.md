@@ -48,14 +48,14 @@
 ### 第 5 步：打开终端开始干活
 
 点 ▶️ **Open in terminal**：
-1. 若提示"检测到环境变量覆盖"（`~/.claude/settings.json` 里有旧配置），点**清除并继续**——否则旧配置会覆盖你切换的模型
-2. 新终端窗口打开后看到 `✅ env ready — run: claude-plan`（Plan 模式）或 `run: claude`（Work 模式）
-3. 输入命令开始会话：
+1. 应用会在 `$CC_MODE_DIR/<ModelName>.json` 写一个临时 settings 文件，并定义当前选中模式的 alias —— Plan → `cc-p`，Work → `cc-w`。不写 `~/.claude/settings.json`，也不写 `~/.zshrc`。
+2. 新终端窗口打开后看到 `✅ ready — type cc-p for plan, cc-w for work`。
+3. 输入 alias 开始会话：
 
 | 当前选中模式 | 终端里运行 | 效果 |
 | --- | --- | --- |
-| Plan | `claude-plan` | `claude --permission-mode plan` + thinking 开启 |
-| Work | `claude` | 默认权限，正常执行 |
+| Plan | `cc-p` | `claude --permission-mode plan` + thinking 开启（通过 `--settings "$CC_MODE_DIR/<ModelName>.json"` 加载） |
+| Work | `cc-w` | 默认权限，正常执行（通过 `--settings "$CC_MODE_DIR/<ModelName>.json"` 加载） |
 
 > 切换模式：回到应用点另一张模式卡片，再点一次 ▶️ 开新终端窗口（旧终端 env 不受影响，可同时保留两个模式的终端）。
 

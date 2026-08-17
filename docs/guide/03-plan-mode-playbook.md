@@ -14,8 +14,8 @@ Without an intermediate artifact, the "plan" lives only in a session's context: 
 ## Starting Plan mode
 
 1. Select the **🧠 Plan Mode** card in the app (bound to a reasoning model)
-2. ▶️ Open in terminal → run `claude-plan`
-3. Equivalent to `claude --permission-mode plan` + `MAX_THINKING_TOKENS=16000` (thinking on)
+2. ▶️ Open in terminal → run `cc-p`
+3. Equivalent to `claude --permission-mode plan` + `MAX_THINKING_TOKENS=16000` (thinking on), launched via `--settings "$CC_MODE_DIR/<ModelName>.json"` and `--setting-sources ""`
 
 Claude Code's plan permission mode is **read-only** by design — the mechanism itself guarantees "design only, touch nothing".
 
@@ -31,7 +31,7 @@ Claude Code's plan permission mode is **read-only** by design — the mechanism 
 # Plan: <one-line topic>
 
 - Status: draft | approved | in-progress | done
-- Author: claude-plan (<model-id>) @ <date>
+- Author: leochan007 (<model-id>) @ <date>
 - Refs: <requirement source / issue link>
 
 ## 1. Background & goal

@@ -6,10 +6,10 @@
 
 | 终端 | 模式 | 绑定模型（示例） |
 | --- | --- | --- |
-| 终端 A（Plan） | `claude-plan` | glm-5.3（推理） |
-| 终端 B（Work） | `claude` | qwen3-coder-plus（执行） |
+| 终端 A | PLAN | glm-5.3（推理） |
+| 终端 B | WORK | MiniMax-M3（执行） |
 
-两个终端由应用分别注入对应模型的环境变量，互不干扰，可同时开着。
+终端 A 输 `cc-p`、终端 B 输 `cc-w`（应用为每个模式生成的 alias，详见 [02 章](02-models-and-providers.md)）。两个 session 互不干扰，可同时开着。
 
 ## Step 1 · Plan 会话（终端 A）
 
@@ -31,7 +31,7 @@ Plan 模式产出的文档（节选）：
 # Plan: 模型配置导出/导入
 
 - 状态: draft
-- 作者: claude-plan (glm-5.3) @ 2026-08-16
+- 作者: leochan007 (glm-5.3) @ 2026-08-16
 
 ## 1. 背景与目标
 换机/备份时需要迁移模型配置；目标：一键导出 JSON 文件、一键导入并合并。

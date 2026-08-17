@@ -14,8 +14,8 @@
 ## 启动 Plan 模式
 
 1. 应用里选中 **🧠 Plan Mode** 卡片（绑定推理模型）
-2. ▶️ Open in terminal → 输入 `claude-plan`
-3. 等效于 `claude --permission-mode plan` + `MAX_THINKING_TOKENS=16000`（thinking 开启）
+2. ▶️ Open in terminal → 输入 `cc-p`
+3. 等效于 `claude --permission-mode plan` + `MAX_THINKING_TOKENS=16000`（thinking 开启），通过 `--settings "$CC_MODE_DIR/<ModelName>.json"` + `--setting-sources ""` 加载
 
 Plan 权限模式下 Claude Code 本身就是**只读**的——正好从机制上保证了"只出方案不动代码"。
 
@@ -31,7 +31,7 @@ Plan 权限模式下 Claude Code 本身就是**只读**的——正好从机制�
 # Plan: <一句话主题>
 
 - 状态: draft | approved | in-progress | done
-- 作者: claude-plan (<模型ID>) @ <日期>
+- 作者: leochan007 (<模型ID>) @ <日期>
 - 关联: <需求来源/issue 链接>
 
 ## 1. 背景与目标

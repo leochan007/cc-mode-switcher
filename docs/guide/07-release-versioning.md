@@ -1,4 +1,4 @@
-# 06 · Release & Versioning Workflow
+# 07 · Release & Versioning Workflow
 
 This project ships **macOS / Windows / Linux** installers via GitHub Releases, driven entirely by three manual GitHub Actions workflows. There is **no automatic trigger** — every publish is a deliberate human action taken on the GitHub web UI. **No local command line is required.**
 

@@ -2,7 +2,7 @@
 
 **English** | [简体中文](/zh/)
 
-## Chapters
+## 📑 Documentation Index
 
 | Chapter | Contents | For whom |
 | --- | --- | --- |
@@ -11,7 +11,8 @@
 | [03 · Plan Mode Playbook](guide/03-plan-mode-playbook.md) | Producing plan documents (the intermediate artifact) with Plan mode | Core workflow |
 | [04 · Work Mode Playbook](guide/04-work-mode-playbook.md) | Executing the plan strictly — **never re-plan mid-flight** | Core workflow |
 | [05 · End-to-End Example](guide/05-workflow-example.md) | One feature from requirement to delivery, the whole way | See it in action |
-| [06 · Release & Versioning Workflow](guide/06-release-workflow.md) | GitHub Actions workflows for cloud builds, version bumps / downgrades, GitHub Releases — all manual, no local CLI | Maintainers |
+| [06 · Local Build](guide/06-local-build.md) | Clean install: clear node_modules, pnpm store, electron / electron-builder caches, then reinstall | When `pnpm run dev` or `pnpm run dist` misbehaves |
+| [07 · Release & Versioning Workflow](guide/07-release-versioning.md) | GitHub Actions workflows for cloud builds, version bumps / downgrades, GitHub Releases — all manual, no local CLI | Maintainers |
 
 ## Core Idea
 

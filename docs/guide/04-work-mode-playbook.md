@@ -5,7 +5,7 @@
 ## Starting Work mode
 
 1. Select the **⚡ Work Mode** card in the app (bound to an execution model)
-2. ▶️ Open in terminal → run plain `claude` (default permissions: can write files, run commands)
+2. ▶️ Open in terminal → run `cc-w` (default permissions: can write files, run commands; same `--settings` + `--setting-sources ""` mechanism as `cc-p`)
 
 ## Work session opening prompt (copy & use)
 
@@ -49,7 +49,7 @@ Stop immediately and output: what you hit / why the plan doesn't
 cover it / which items you suggest revising
         │
         ▼
-Switch to the Plan terminal (claude-plan) → revise
+Switch to the Plan terminal (`cc-p`) → revise
 docs/plans/NNN-….md → human re-approves
         │
         ▼

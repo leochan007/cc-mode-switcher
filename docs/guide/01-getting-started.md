@@ -48,14 +48,14 @@ Change it anytime in **⚙️ Settings → Terminal**.
 ### Step 5: Open a terminal and start
 
 Click ▶️ **Open in terminal**:
-1. If prompted about env overrides (`~/.claude/settings.json` has stale config), click **Clean & continue** — otherwise the old config silently overrides your model
-2. The new terminal window shows `✅ env ready — run: claude-plan` (Plan mode) or `run: claude` (Work mode)
-3. Type the command to start:
+1. The app writes a temp settings file under `$CC_MODE_DIR/<ModelName>.json` and defines the alias for the currently selected mode — Plan → `cc-p`, Work → `cc-w`. Nothing is written to `~/.claude/settings.json` or `~/.zshrc`.
+2. The new terminal echoes `✅ ready — type cc-p for plan, cc-w for work`.
+3. Type the alias to start:
 
 | Selected mode | Run in terminal | Effect |
 | --- | --- | --- |
-| Plan | `claude-plan` | `claude --permission-mode plan` + thinking enabled |
-| Work | `claude` | Default permissions, normal execution |
+| Plan | `cc-p` | `claude --permission-mode plan` + thinking enabled (loaded via `--settings "$CC_MODE_DIR/<ModelName>.json"`) |
+| Work | `cc-w` | Default permissions, normal execution (loaded via `--settings "$CC_MODE_DIR/<ModelName>.json"`) |
 
 > Switching modes: go back to the app, click the other mode card, then ▶️ again for a new terminal window (the old terminal keeps its env — you can keep one terminal per mode).
 

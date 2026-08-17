@@ -6,10 +6,10 @@ Scenario: add **model config export/import** to cc-mode-switcher. The full Plan 
 
 | Terminal | Mode | Bound model (example) |
 | --- | --- | --- |
-| Terminal A (Plan) | `claude-plan` | glm-5.3 (reasoning) |
-| Terminal B (Work) | `claude` | qwen3-coder-plus (execution) |
+| Terminal A | PLAN | glm-5.3 (reasoning) |
+| Terminal B | WORK | MiniMax-M3 (execution) |
 
-The app injects each mode's env into its own terminal — they don't interfere and can stay open side by side.
+Type `cc-p` in Terminal A and `cc-w` in Terminal B (the app's per-mode aliases — see [chapter 02](02-models-and-providers.md)). The two sessions don't interfere and can stay open side by side.
 
 ## Step 1 · Plan session (Terminal A)
 
@@ -33,7 +33,7 @@ Excerpt of the produced document:
 # Plan: Model config export/import
 
 - Status: draft
-- Author: claude-plan (glm-5.3) @ 2026-08-16
+- Author: leochan007 (glm-5.3) @ 2026-08-16
 
 ## 1. Background & goal
 Configs must migrate across machines; goal: one-click JSON export,
