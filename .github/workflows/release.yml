@@ -63,22 +63,35 @@ jobs:
             #
             # `git ls-remote --tags origin` prints one line per tag:
             #   <sha>\trefs/tags/v1.0.0
-            #   <sha>\trefs/tags/v1.0.0^{}    ← peeled tag (same commit, dereferenced)
-            # Strip refs/tags/, drop the peeled (^{}) lines, sort by semver,
-            # take the last (highest).
-            TAG="$(
+            #   <sha>\trefs/tags/v1.0.0^{}    ← peeled (dereferenced) tag, same commit
+            # Strip refs/tags/, drop the peeled (^{}) lines, keep only vX.Y.Z,
+            # sort by semver, take the highest.
+
+            echo "::debug::Raw \`git ls-remote --tags origin\` output:"
+            git ls-remote --tags origin | sed 's/^/  /'
+
+            CANDIDATES="$(
               git ls-remote --tags origin \
                 | awk '{print $2}' \
                 | sed 's|^refs/tags/||' \
                 | grep -v '\^' \
-                | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
-                | sort -V \
-                | tail -n 1
+                | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+                || true
             )"
 
+            echo "::debug::Tags matching vX.Y.Z (after filters):"
+            if [ -z "$CANDIDATES" ]; then
+              echo "  (none)"
+            else
+              echo "$CANDIDATES" | sed 's/^/  /'
+            fi
+
+            TAG="$(printf '%s\n' "$CANDIDATES" | sort -V | tail -n 1)"
+
             if [ -z "$TAG" ]; then
-              echo "::error::No semver tag found on origin (looked for X.Y.Z)."
+              echo "::error::No semver tag found on origin (looked for vX.Y.Z)."
               echo "::error::Run \`Set version & tag\` first to create one, then re-run this workflow."
+              echo "::error::If you know a tag should be on origin, run \`git ls-remote --tags origin\` locally to inspect."
               exit 1
             fi
 
@@ -97,6 +110,9 @@ jobs:
               echo "::error::'${RAW}' is not a valid semver version (expected X.Y.Z or vX.Y.Z)"
               exit 1
             fi
+
+            echo "::debug::Raw \`git ls-remote --tags origin | grep ${TAG}\`:"
+            git ls-remote --tags origin | grep "${TAG}" || echo "  (no match)"
 
             if ! git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
               echo "::error::Tag '${TAG}' does not exist on origin."
