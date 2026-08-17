@@ -24,6 +24,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Force every JavaScript action (checkout / pnpm/action-setup / setup-node)
+    # to run on Node 24, clearing the Node 20 deprecation warning. Official
+    # GitHub opt-in: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     steps:
       - uses: actions/checkout@v4.2.2
         with:
@@ -34,7 +39,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
