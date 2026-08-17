@@ -73,6 +73,10 @@ export default defineConfig({
               link: '/'
             },
             {
+              text: '⬇️ Download',
+              link: '/download'
+            },
+            {
               text: 'Guide',
               items: [
                 { text: '01 · Quick Start', link: '/guide/01-getting-started' },
@@ -146,6 +150,10 @@ export default defineConfig({
             {
               text: '← 文档索引',
               link: '/zh/'
+            },
+            {
+              text: '⬇️ 下载',
+              link: '/zh/download'
             },
             {
               text: '使用指南',
