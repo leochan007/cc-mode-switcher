@@ -43,7 +43,9 @@ Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终�
 - 本应用**从不读、不写** `~/.claude/settings.json` 或任何 settings 文件 —— 无需备份，不会冲突
 
 ### 📦 发布与版本管理（GitHub Actions，手动）
-macOS / Windows / Linux 安装包通过 **三个手动工作流**发布到 GitHub Release —— 无自动触发，零本地命令：
+macOS / Windows / Linux 安装包发布在 GitHub Release —— **[点此下载最新版](https://github.com/leochan007/cc-mode-switcher/releases/latest)**，各系统安装说明见[下载页](https://leochan007.github.io/cc-mode-switcher/zh/download)。
+
+发布通过 **三个手动工作流** 驱动 —— 无自动触发，零本地命令：
 - **List releases** —— 动手前先看服务器上有哪些版本
 - **Set version & tag** —— 升级（patch / minor / major）、降级、或任意版本。提交 `release vX.Y.Z` 并推 tag
 - **Release Electron App** —— 三平台并行构建，创建 / 更新 GitHub Release

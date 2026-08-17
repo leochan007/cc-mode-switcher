@@ -2,6 +2,10 @@
 
 **English** | [简体中文](/zh/)
 
+## ⬇️ Download
+
+macOS / Windows / Linux installers live on **[GitHub Releases → latest](https://github.com/leochan007/cc-mode-switcher/releases/latest)** — see the [download page](download.md) for per-OS files and install notes.
+
 ## 📑 Documentation Index
 
 | Chapter | Contents | For whom |

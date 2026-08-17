@@ -26,6 +26,7 @@ export default defineConfig({
       lang: 'en',
       themeConfig: {
         nav: [
+          { text: 'Download', link: '/download' },
           { text: 'Index', link: '/' },
           { text: 'Guide', link: '/guide/01-getting-started' },
           { text: 'Playbooks', link: '/guide/03-plan-mode-playbook' },
@@ -37,6 +38,10 @@ export default defineConfig({
             {
               text: 'Index',
               link: '/'
+            },
+            {
+              text: '⬇️ Download',
+              link: '/download'
             },
             {
               text: 'Guide',
@@ -98,6 +103,7 @@ export default defineConfig({
       lang: 'zh-CN',
       themeConfig: {
         nav: [
+          { text: '下载', link: '/zh/download' },
           { text: '文档索引', link: '/zh/' },
           { text: '使用指南', link: '/zh/guide/01-getting-started' },
           { text: '实战案例', link: '/zh/guide/03-plan-mode-playbook' }
@@ -108,6 +114,10 @@ export default defineConfig({
             {
               text: '文档索引',
               link: '/zh/'
+            },
+            {
+              text: '⬇️ 下载',
+              link: '/zh/download'
             },
             {
               text: '使用指南',

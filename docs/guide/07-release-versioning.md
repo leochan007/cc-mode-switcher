@@ -95,7 +95,19 @@ If the tag you typed already exists on origin, the workflow aborts with a clear 
 | --- | --- |
 | `version` | *(leave empty — picks the highest semver tag on origin)* |
 
-When `version` is empty, the workflow lists every semver tag on origin, picks the highest one, checks it out, and runs `pnpm install` + `electron-builder --publish always`. macOS / Windows / Linux build in parallel via matrix strategy.
+When `version` is empty, the workflow lists every semver tag on origin, picks the highest one, checks it out, and runs `pnpm build` + `electron-builder --publish always`. macOS / Windows / Linux build in parallel via matrix strategy.
+
+### Draft → published, automatically
+
+electron-builder's `releaseType` **defaults to `draft`** — each of the three parallel builds uploads its artifacts into the **same draft release**. A dedicated `publish` job then runs only after **all three** builds have succeeded and flips the draft to published (`gh release edit <tag> --draft=false`).
+
+Why keep the draft step at all:
+
+- The release never goes public with a **partial artifact set** — e.g. the `.dmg` uploaded while the `.exe` is still building
+- If any platform fails, the release stays a **draft** (visible only to maintainers) — fix and re-run, nothing half-public ever appears
+- Published releases are what `releases/latest` and the [download page](../download.md) point to, so they must always be complete
+
+> **A release stuck in Draft = at least one platform's build failed.** Check the Actions run, re-run the failed jobs, and the `publish` job will promote it.
 
 If you want a specific (not-the-latest) tag — say to skip past `v1.1.0` and ship `v1.0.3` instead, or re-publish a tag whose Release got corrupted — fill `version=1.0.3` (or `v1.0.3`). Either form works.
 
@@ -173,11 +185,12 @@ The `v1.0.1` tag already exists, so Step 1's version-bump workflow would refuse.
 
 ### Promote a draft to a real release
 
-```
-1. Find the draft via List releases.
+The workflow's `publish` job promotes drafts automatically once all three builds succeed — a release left in Draft means a build failed (or the `publish` job was skipped). Normal recovery is: open the failed Actions run, re-run the failed jobs, and the `publish` job promotes the release.
 
-2. Open the draft on GitHub, edit it (Draft → Release), or:
-   gh release edit v0.9.5 --draft=false
+If you ever need to do it by hand (e.g. all artifacts are present but the `publish` job itself failed):
+
+```
+gh release edit v0.9.5 --draft=false
 ```
 
-This isn't a workflow — it's just the GitHub Releases UI / `gh` CLI, since drafts are GitHub-native state.
+or open the draft on GitHub and click **Publish release**.

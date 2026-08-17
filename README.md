@@ -43,7 +43,9 @@ Claude Code's `~/.claude/settings.json` `env` block would otherwise override ter
 - The app **never reads or writes** `~/.claude/settings.json` or any settings file — no backups, no surprises
 
 ### 📦 Release & Versioning (GitHub Actions, manual)
-macOS / Windows / Linux installers are published to GitHub Releases by **three manual workflows** — no automatic triggers, no local CLI needed:
+macOS / Windows / Linux installers are published to GitHub Releases — **[download the latest build here](https://github.com/leochan007/cc-mode-switcher/releases/latest)**, or see the [download page](https://leochan007.github.io/cc-mode-switcher/download) for per-OS install notes.
+
+Releases are driven by **three manual workflows** — no automatic triggers, no local CLI needed:
 - **List releases** — see what already exists before doing anything
 - **Set version & tag** — bump up (`patch` / `minor` / `major`), downgrade, or set any version. Writes a `release vX.Y.Z` commit and pushes the tag
 - **Release Electron App** — builds the three OS targets in parallel and creates / updates the GitHub Release

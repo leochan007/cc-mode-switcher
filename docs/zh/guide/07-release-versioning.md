@@ -95,7 +95,19 @@ refs/tags/v0.9.0
 | --- | --- |
 | `version` | 留空（自动选 origin 上 semver 最高的 tag） |
 
-留空时，工作流列出 origin 上所有 semver tag，挑最高的，checkout 它，跑 `pnpm install` + `electron-builder --publish always`。macOS / Windows / Linux 通过 matrix strategy 并行构建。
+留空时，工作流列出 origin 上所有 semver tag，挑最高的，checkout 它，跑 `pnpm build` + `electron-builder --publish always`。macOS / Windows / Linux 通过 matrix strategy 并行构建。
+
+### Draft → 正式发布，全自动
+
+electron-builder 的 `releaseType` **默认是 `draft`** —— 三个并行构建把各自的产物上传到**同一个 draft release**。之后有一个专门的 `publish` job，只在**三个构建全部成功**后才运行，把 draft 转成正式发布（`gh release edit <tag> --draft=false`）。
+
+为什么保留 draft 这一步：
+
+- Release 永远不会带着**不完整的产物**对外公开 —— 比如 `.dmg` 已上传而 `.exe` 还在构建
+- 任何一个平台失败，Release 就停在 **draft**（只有维护者可见）—— 修复后重跑即可，不会出现半公开状态
+- `releases/latest` 和[下载页](../download)指向的都是已正式发布的版本，所以它们必须是完整的
+
+> **Release 一直停在 Draft = 至少有一个平台的构建失败了。** 去看 Actions 运行记录，重跑失败的 job，`publish` job 会自动把它转正。
 
 想用某个特定（不是最新）的 tag —— 比如跳过 `v1.1.0`、发 `v1.0.3`，或重打一个 Release 损坏的 tag —— 填 `version=1.0.3`（或 `v1.0.3`），两种写法都行。
 
@@ -177,11 +189,12 @@ git push origin --delete v1.0.0
 
 ### 把 draft 提升成正式 release
 
-```
-1. 通过 List releases 找到 draft。
+工作流的 `publish` job 会在三个构建全部成功后自动转正 —— Release 停留在 Draft 说明有构建失败（或 `publish` job 没跑）。常规恢复方式：打开失败的 Actions 运行，重跑失败的 job，`publish` job 会自动转正。
 
-2. 在 GitHub 上编辑该 release（Draft → Release），或者：
-   gh release edit v0.9.5 --draft=false
+确需手动处理时（例如产物齐全但 `publish` job 本身失败了）：
+
+```
+gh release edit v0.9.5 --draft=false
 ```
 
-这不是工作流 —— draft 是 GitHub 原生状态，直接在 Releases UI 或 `gh` CLI 改就行。
+或在 GitHub 上打开该 draft，点击 **Publish release**。

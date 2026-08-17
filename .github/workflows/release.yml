@@ -38,6 +38,11 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # Every matrix leg resolves the same tag; expose it so the publish job
+    # below can target the exact release without re-resolving.
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+
     # Force every JavaScript action (checkout / pnpm/action-setup / setup-node)
     # to run on Node 24, clearing the Node 20 deprecation warning. Official
     # GitHub opt-in: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
@@ -159,3 +164,24 @@ jobs:
         run: pnpm exec electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # electron-builder's `releaseType` defaults to "draft" (see
+  # builder-util-runtime/out/publishOptions.d.ts). All three matrix legs upload
+  # into the SAME draft release. Flipping it to published happens only here,
+  # after every leg has succeeded — a release never goes public with a partial
+  # artifact set (e.g. dmg uploaded while the exe is still building). If any
+  # leg fails, the release stays a draft for inspection / re-run.
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          echo "Publishing draft release ${TAG} …"
+          gh release edit "${TAG}" --repo "$GITHUB_REPOSITORY" --draft=false
+          echo "::notice::Release ${TAG} is now public: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
