@@ -93,11 +93,25 @@ If the tag you typed already exists on origin, the workflow aborts with a clear 
 
 | Input | Value |
 | --- | --- |
-| `tag` | *(leave blank to build whatever is currently on `main` HEAD — typically the commit Step 1 just pushed)* |
+| `version` | *(leave empty — picks the highest semver tag on origin)* |
 
-The runner checks out that ref, runs `pnpm install` + `electron-builder --publish always`, and creates a GitHub Release named after the version in `package.json`. The three OS targets build in parallel via matrix strategy.
+When `version` is empty, the workflow lists every semver tag on origin, picks the highest one, checks it out, and runs `pnpm install` + `electron-builder --publish always`. macOS / Windows / Linux build in parallel via matrix strategy.
+
+If you want a specific (not-the-latest) tag — say to skip past `v1.1.0` and ship `v1.0.3` instead, or re-publish a tag whose Release got corrupted — fill `version=1.0.3` (or `v1.0.3`). Either form works.
+
+The workflow **always**:
+
+- Uses a tag (never silently builds HEAD)
+- Errors out if the resolved tag doesn't exist on origin — and tells you to run `Set version & tag` first
+- `git checkout`s the tag, so the published artifacts always match the tagged commit byte-for-byte
 
 ## Re-publish an existing tag
+
+Same workflow, with `version` filled in:
+
+| Input | Value |
+| --- | --- |
+| `version` | `1.0.0` *(or `v1.0.0`)* |
 
 Use this when:
 
@@ -105,13 +119,7 @@ Use this when:
 - The previous build had a bad artifact and you want a fresh build at the same tag
 - You want to add a new OS target to an old release
 
-**Actions → Release Electron App → Run workflow**, with:
-
-| Input | Value |
-| --- | --- |
-| `tag` | `v1.0.0` *(the tag you want to re-publish)* |
-
-The runner checks out that tag, rebuilds, and overwrites the existing Release with fresh artifacts. `--publish always` creates the Release if it's missing, updates it if it exists.
+The runner checks out the same tag, rebuilds, and `electron-builder --publish always` overwrites the existing Release with fresh artifacts.
 
 ## Deleting releases or tags
 

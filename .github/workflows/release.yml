@@ -1,18 +1,26 @@
 name: Release Electron App
 
-# Manual-only — nothing here fires on tag push. Publishing is always an explicit
-# human action: first run `Set version & tag` (creates the commit + tag + push),
-# then run this workflow to actually build & publish the GitHub Release.
+# Manual-only — nothing fires on tag push. Publishing is always an explicit
+# human action. The workflow ALWAYS uses a tag (never silently builds HEAD)
+# and ALWAYS errors out when the tag is missing rather than guessing.
 #
-# Inputs:
-#   tag — optional. Leave blank to build whatever is currently on main HEAD
-#         (i.e. the commit `Set version & tag` just pushed). Fill `vX.Y.Z` to
-#         re-publish an existing tag.
+# Two ways to invoke:
+#   - Leave `version` empty → finds the highest-semver tag on origin and uses it.
+#     This is the "rebuild whatever's latest" path. Re-running the workflow
+#     with empty input always targets the same tag (until you publish a higher
+#     one).
+#   - Fill `version=1.2.3` (or `v1.2.3`) → uses that specific tag. Used when
+#     you want to re-publish an older tag or skip past a newer one.
+#
+# Prerequisite for either path: the tag must already exist on origin. Tags
+# are created by `Set version & tag`. We refuse to auto-create — silent tag
+# creation has burned us in the past (release artifacts end up built from
+# a commit that the tag doesn't actually point at).
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to build (e.g. v1.0.0). Leave blank to build the current main HEAD.'
+      version:
+        description: 'Version to release — "1.2.3" or "v1.2.3". Leave empty to release the highest-semver tag on origin.'
         type: string
         default: ''
 
@@ -39,36 +47,85 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
         with:
-          # Full history so `git checkout <tag>` works when an explicit tag is given.
+          # Full history so `git checkout <tag>` and `git ls-remote` both work.
           fetch-depth: 0
 
-      - name: Checkout explicit tag (re-publish only)
+      - name: Resolve target tag
+        id: resolve
         env:
-          TAG: ${{ inputs.tag }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          if [ -z "$TAG" ]; then
-            echo "No explicit tag — building current HEAD $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-ref HEAD)."
-          else
-            if ! git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
-              echo "::error::Tag '${TAG}' does not exist on origin."
+          RAW="$INPUT_VERSION"
+
+          if [ -z "$RAW" ]; then
+            # Empty input → pick the highest semver tag on origin.
+            #
+            # `git ls-remote --tags origin` prints one line per tag:
+            #   <sha>\trefs/tags/v1.0.0
+            #   <sha>\trefs/tags/v1.0.0^{}    ← peeled tag (same commit, dereferenced)
+            # Strip refs/tags/, drop the peeled (^{}) lines, sort by semver,
+            # take the last (highest).
+            TAG="$(
+              git ls-remote --tags origin \
+                | awk '{print $2}' \
+                | sed 's|^refs/tags/||' \
+                | grep -v '\^' \
+                | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+                | sort -V \
+                | tail -n 1
+            )"
+
+            if [ -z "$TAG" ]; then
+              echo "::error::No semver tag found on origin (looked for X.Y.Z)."
+              echo "::error::Run \`Set version & tag\` first to create one, then re-run this workflow."
               exit 1
             fi
-            git checkout "$TAG"
-            echo "Checked out ${TAG} at $(git rev-parse --short HEAD)."
+
+            echo "No version supplied — picked highest tag on origin: ${TAG}."
+          else
+            # Explicit input → normalize to a tag, validate, require it to exist.
+            if [[ "$RAW" == v* ]]; then
+              TAG="$RAW"
+              VER="${RAW#v}"
+            else
+              TAG="v$RAW"
+              VER="$RAW"
+            fi
+
+            if ! [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::'${RAW}' is not a valid semver version (expected X.Y.Z or vX.Y.Z)"
+              exit 1
+            fi
+
+            if ! git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+              echo "::error::Tag '${TAG}' does not exist on origin."
+              echo "::error::Run \`Set version & tag\` first to create the commit + tag + push,"
+              echo "::error::then re-run this workflow with version=${VER} (or empty to pick latest)."
+              exit 1
+            fi
+
+            echo "Resolved ${RAW} → ${TAG} (exists on origin)."
           fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tag
+        run: |
+          git checkout "${{ steps.resolve.outputs.tag }}"
+          echo "Checked out ${{ steps.resolve.outputs.tag }} at $(git rev-parse --short HEAD)."
 
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
       - name: Build and publish
-        # --publish always: create the GitHub Release if missing, update artifacts if it exists.
+        # --publish always: create the GitHub Release if missing, overwrite artifacts if it exists.
         run: pnpm exec electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

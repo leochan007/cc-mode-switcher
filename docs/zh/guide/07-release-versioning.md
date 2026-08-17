@@ -93,11 +93,25 @@ refs/tags/v0.9.0
 
 | 输入 | 值 |
 | --- | --- |
-| `tag` | 留空（构建当前 main HEAD —— 一般就是第一步刚推上去的那个 commit） |
+| `version` | 留空（自动选 origin 上 semver 最高的 tag） |
 
-runner checkout 这个 ref，跑 `pnpm install` + `electron-builder --publish always`，按 `package.json` 里的版本号创建 GitHub Release。三个平台通过 matrix strategy 并行构建。
+留空时，工作流列出 origin 上所有 semver tag，挑最高的，checkout 它，跑 `pnpm install` + `electron-builder --publish always`。macOS / Windows / Linux 通过 matrix strategy 并行构建。
+
+想用某个特定（不是最新）的 tag —— 比如跳过 `v1.1.0`、发 `v1.0.3`，或重打一个 Release 损坏的 tag —— 填 `version=1.0.3`（或 `v1.0.3`），两种写法都行。
+
+工作流**永远**：
+
+- 用一个 tag（不会偷偷跑 HEAD）
+- 如果算出来的 tag 在 origin 上不存在就报错，告诉你先跑 `Set version & tag`
+- `git checkout` 这个 tag，所以发布的产物和 tag commit 一一对应
 
 ## 重发已有 tag
+
+同一个工作流，`version` 填具体版本：
+
+| 输入 | 值 |
+| --- | --- |
+| `version` | `1.0.0`（或 `v1.0.0`） |
 
 适用场景：
 
@@ -105,13 +119,7 @@ runner checkout 这个 ref，跑 `pnpm install` + `electron-builder --publish al
 - 上次构建产物有问题，要重打
 - 给旧 release 补一个新平台的包
 
-**Actions → Release Electron App → Run workflow**，填：
-
-| 输入 | 值 |
-| --- | --- |
-| `tag` | `v1.0.0`（要重发的 tag） |
-
-runner checkout 这个 tag，重新构建，用新产物覆盖已有 Release。`--publish always` 会「缺则建、有则覆」。
+runner checkout 同一个 tag，重新构建，`electron-builder --publish always` 用新产物覆盖已有 Release。
 
 ## 删 release / tag
 
