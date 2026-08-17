@@ -42,6 +42,14 @@ Claude Code's `~/.claude/settings.json` `env` block would otherwise override ter
 - `--settings "$CC_MODE_DIR/<ModelName>.json"` — loads the per-mode temp JSON (named after the bound model) at **highest priority**, overriding everything
 - The app **never reads or writes** `~/.claude/settings.json` or any settings file — no backups, no surprises
 
+### 📦 Release & Versioning (GitHub Actions, manual)
+macOS / Windows / Linux installers are published to GitHub Releases by **three manual workflows** — no automatic triggers, no local CLI needed:
+- **List releases** — see what already exists before doing anything
+- **Set version & tag** — bump up (`patch` / `minor` / `major`), downgrade, or set any version. Writes a `release vX.Y.Z` commit and pushes the tag
+- **Release Electron App** — builds the three OS targets in parallel and creates / updates the GitHub Release
+
+Full operational guide: [Release & Versioning Workflow](docs/guide/06-release-workflow.md).
+
 ### ⚙️ Settings & Polish
 - 🌙 Dark (default) / ☀️ Light theme — CSS-variable based, toggle in the header or Settings
 - English (default) / 简体中文 — quick toggle in the header or Settings
@@ -187,6 +195,7 @@ Full chaptered guides live in [`docs/`](docs/) — English by default, [简体�
 - [Plan mode playbook](docs/guide/03-plan-mode-playbook.md) — produce plan documents as the intermediate artifact
 - [Work mode playbook](docs/guide/04-work-mode-playbook.md) — execute the plan strictly, never re-plan mid-flight
 - [End-to-end example](docs/guide/05-workflow-example.md) — one feature from requirement to delivery
+- [Release & versioning workflow](docs/guide/06-release-workflow.md) — GitHub Actions workflows for cloud builds, version up / down, GitHub Releases (all manual, no local CLI)
 
 ## Project Structure
 

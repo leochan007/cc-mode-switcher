@@ -11,6 +11,7 @@
 | [03 · Plan 模式实战](/zh/guide/03-plan-mode-playbook) | 用 Plan 模式生成 plan 文档（中间产物），不动代码 | 核心工作流 |
 | [04 · Work 模式实战](/zh/guide/04-work-mode-playbook) | 严格按 plan 文档执行，**绝不另起 plan** | 核心工作流 |
 | [05 · 端到端示例](/zh/guide/05-workflow-example) | 一个完整功能从 Plan 到 Work 落地的全过程 | 想看真实用法的人 |
+| [06 · 发布与版本管理](/zh/guide/06-release-workflow) | GitHub Actions 工作流：云端构建、升级 / 降级、发布 GitHub Release —— 全手动，零本地命令 | 维护者 |
 
 ## 核心理念
 

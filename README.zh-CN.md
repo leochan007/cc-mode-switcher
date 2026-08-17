@@ -42,6 +42,14 @@ Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终�
 - `--settings "$CC_MODE_DIR/<ModelName>.json"` —— 以**最高优先级**加载该模型绑定的临时 JSON，覆盖一切
 - 本应用**从不读、不写** `~/.claude/settings.json` 或任何 settings 文件 —— 无需备份，不会冲突
 
+### 📦 发布与版本管理（GitHub Actions，手动）
+macOS / Windows / Linux 安装包通过 **三个手动工作流**发布到 GitHub Release —— 无自动触发，零本地命令：
+- **List releases** —— 动手前先看服务器上有哪些版本
+- **Set version & tag** —— 升级（patch / minor / major）、降级、或任意版本。提交 `release vX.Y.Z` 并推 tag
+- **Release Electron App** —— 三平台并行构建，创建 / 更新 GitHub Release
+
+完整操作指南：[发布与版本管理](/zh/guide/06-release-workflow)。
+
 ### ⚙️ 设置与细节
 - 🌙 深色（默认）/ ☀️ 浅色主题 —— 基于 CSS 变量，头部或设置页均可切换
 - English（默认）/ 简体中文 —— 头部或设置页快捷切换
@@ -187,6 +195,7 @@ npm run dist    # 打包安装包（electron-builder）
 - [Plan 模式实战](docs/zh/guide/03-plan-mode-playbook.md) —— 生成 plan 文档（中间产物）的方法论与提示词模板
 - [Work 模式实战](docs/zh/guide/04-work-mode-playbook.md) —— 严格按 plan 执行、绝不另起 plan 的铁律
 - [端到端示例](docs/zh/guide/05-workflow-example.md) —— 一个功能从需求到交付的全过程
+- [发布与版本管理](docs/zh/guide/06-release-workflow.md) —— GitHub Actions 工作流：云端构建、升级 / 降级、发布 GitHub Release（全手动，零本地命令）
 
 ## 项目结构
 
