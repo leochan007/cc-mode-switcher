@@ -10,12 +10,10 @@ on:
       - 'pnpm-lock.yaml'
   workflow_dispatch:
 
-# Only one deploy runs at a time; cancel superseded builds.
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
-# OIDC token for the official deploy-pages action; pages:write to publish.
 permissions:
   contents: read
   pages: write
@@ -24,22 +22,17 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Force every JavaScript action (checkout / pnpm/action-setup / setup-node)
-    # to run on Node 24, clearing the Node 20 deprecation warning. Official
-    # GitHub opt-in: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
     steps:
-      - uses: actions/checkout@v4.2.2
-        with:
-          # Full history keeps VitePress happy if anything ever needs git info
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -54,12 +47,16 @@ jobs:
         with:
           path: docs/.vitepress/dist
 
+
   deploy:
     needs: build
+
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
