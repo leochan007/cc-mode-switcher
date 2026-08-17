@@ -1,0 +1,44 @@
+name: List releases
+
+# Manual dispatch — prints what's currently on GitHub so you can decide
+# whether to bump, downgrade, or re-publish before touching anything.
+#   - `gh release list`     → GitHub Releases (title, tag, status, date)
+#   - `git ls-remote --tags`→ every tag on origin (some may not have a Release)
+#
+# Both views together catch the gap where a tag exists but its release was
+# deleted — the exact case `release.yml`'s manual re-publish flow handles.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags from origin
+        run: git fetch --tags origin
+
+      - name: Print releases + tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "================================================================"
+          echo "  GitHub Releases (most recent 30)"
+          echo "================================================================"
+          if gh release list --limit 30; then
+            :
+          else
+            echo "(none — no releases published yet)"
+          fi
+
+          echo ""
+          echo "================================================================"
+          echo "  Tags on origin (most recent 30)"
+          echo "================================================================"
+          git ls-remote --tags origin | awk '{print $2}' | sed 's|refs/tags/||' | tail -30

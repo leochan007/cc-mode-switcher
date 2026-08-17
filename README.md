@@ -33,14 +33,14 @@ This tool can't be that smart. It draws the simplest possible line — **plan vs
 
 ### ▶️ Open in Terminal
 - First use: pick your terminal app (Terminal.app, iTerm, or any other — falls back to a generated `.command` file)
-- Opens a new terminal window with all environment variables injected — nothing is executed for you
-- Plan mode also defines `claude-plan` alias; a ready hint is echoed
+- Opens a new terminal window with the alias for the **currently selected mode** defined for that session only — nothing is written to `~/.zshrc`
+- Type `cc-p` to launch Claude Code in Plan mode, `cc-w` for Work mode; a ready hint is echoed
 
-### 🛡️ Env Override Guard
-Claude Code's `~/.claude/settings.json` `env` block takes **precedence over terminal environment variables** and silently overrides your model. The app:
-- Detects conflicting keys (`ANTHROPIC_*`, `CLAUDE_CODE_SUBAGENT_MODEL`, `MAX_THINKING_TOKENS`) on every launch
-- Prompts to remove them (a timestamped backup is written first; unrelated settings are untouched)
-- Shows the status in Settings so you can clean it anytime
+### 🚫 Zero-touch on Claude Code settings
+Claude Code's `~/.claude/settings.json` `env` block would otherwise override terminal env vars. We sidestep it with two flags per alias:
+- `--setting-sources ""` — Claude Code skips **all** default settings files (user / project / local)
+- `--settings "$CC_MODE_DIR/<ModelName>.json"` — loads the per-mode temp JSON (named after the bound model) at **highest priority**, overriding everything
+- The app **never reads or writes** `~/.claude/settings.json` or any settings file — no backups, no surprises
 
 ### ⚙️ Settings & Polish
 - 🌙 Dark (default) / ☀️ Light theme — CSS-variable based, toggle in the header or Settings
@@ -51,11 +51,12 @@ Claude Code's `~/.claude/settings.json` `env` block takes **precedence over term
 
 ![Settings](docs/public/images/system_settings.png)
 
-## Generated Environment
+## Generated Aliases
 
-The snippet injected into your terminal (Work mode shown; Plan adds `MAX_THINKING_TOKENS` and the alias):
+The snippet shown in the textarea — and the one sent to a new terminal — always reflects the **currently selected mode card** (Plan or Work). Example with Plan selected, bound to GLM-5.3:
 
 ```bash
+# Plan: extended thinking + plan permission mode
 export ANTHROPIC_BASE_URL="https://open.bigmodel.cn/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="sk-..."
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.3"
@@ -68,12 +69,39 @@ export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="glm-5.3"
 export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="glm-5.3"
 export ANTHROPIC_MODEL="glm-5.3"
 export CLAUDE_CODE_SUBAGENT_MODEL="glm-5.3"
+export MAX_THINKING_TOKENS=16000
+
+# Per-mode temp settings file (highest priority via --settings).
+# Filename = bound model's display name → easy to find in $CC_MODE_DIR.
+CC_MODE_DIR=$(mktemp -d -t cc-mode-XXXXXX)
+
+cat > "$CC_MODE_DIR/GLM-5.3.json" <<'CCMODE_EOF'
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-...",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_MODEL": "glm-5.3",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "glm-5.3",
+    "MAX_THINKING_TOKENS": "16000"
+  }
+}
+CCMODE_EOF
+
+# Aliases — --setting-sources "" disables default sources; --settings loads the temp file at highest priority
+alias cc-p='claude --permission-mode plan --setting-sources "" --settings "$CC_MODE_DIR/GLM-5.3.json"'
 ```
 
-| Mode | Thinking | How to launch |
-| --- | --- | --- |
-| Plan | ✅ `MAX_THINKING_TOKENS=16000` | `claude-plan` → `claude --permission-mode plan` |
-| Work | ➖ default | `claude` |
+Selecting the Work card instead regenerates the same block with Work's bindings — `MAX_THINKING_TOKENS` line is omitted, the temp file becomes e.g. `$CC_MODE_DIR/MiniMax-M3.json`, and the alias is `cc-w='claude --setting-sources "" --settings "$CC_MODE_DIR/MiniMax-M3.json"'`. Switch cards any time and click ▶️ again to open a fresh terminal in the new mode.
+
+`--setting-sources ""` skips every default settings file (user / project / local), so `~/.claude/settings.json` never loads. `--settings "$CC_MODE_DIR/<ModelName>.json"` then loads the per-mode temp JSON at **higher priority than any other source**, making it the single source of truth.
 
 ## Requirements
 
@@ -164,7 +192,7 @@ Full chaptered guides live in [`docs/`](docs/) — English by default, [简体�
 
 ```
 src/
-├── main/            # Electron main process (IPC, terminal launch, override guard)
+├── main/            # Electron main process (IPC, terminal launch)
 ├── preload/         # contextBridge API
 └── renderer/
     └── src/
@@ -175,10 +203,95 @@ src/
         └── assets/        # global styles
 ```
 
+## Release Workflow
+
+Publishing is a **two-step manual process** — nothing fires automatically. Both steps happen entirely on GitHub via the Actions tab; no local CLI required.
+
+| Step | Workflow | What it does |
+| --- | --- | --- |
+| 1 | **Set version & tag** | Writes a `release vX.Y.Z` commit, pushes the `vX.Y.Z` tag to origin. Old tags/releases are untouched. |
+| 2 | **Release Electron App** | Builds mac / win / linux artifacts and creates/updates the GitHub Release. |
+
+A third helper, **List releases**, prints what's already on the server so you can decide whether to bump, downgrade, or re-publish.
+
+### First-time setup (one-off, on GitHub)
+
+Repo → **Settings → Actions → General** → **Workflow permissions** → **Read and write permissions** → Save. Without this, the runner can't push back to the repo.
+
+### See what already exists
+
+Actions → **List releases** → **Run workflow** → wait → open the run → expand **Print releases + tags**. You get two lists:
+
+- **Releases** (via `gh release list`) — every published GitHub Release with status (Published / Draft / Pre-release)
+- **Tags** (via `git ls-remote --tags`) — every tag, including ones whose Release was deleted
+
+If a tag shows up in the second list but not the first, its Release was deleted — re-publish it via step 2 with that tag.
+
+### Bump up (auto, patch / minor / major)
+
+Actions → **Set version & tag** → **Run workflow**:
+
+| Input | Value |
+| --- | --- |
+| `mode` | `auto` |
+| `bump` | `patch` *(or `minor` / `major`)* |
+| `version` | *(leave blank)* |
+
+What happens: bumps `package.json` + `pnpm-lock.yaml` + the version label in `SettingsPanel.vue`, commits `release vX.Y.Z`, pushes the new tag. **Nothing is built yet** — go to step 2.
+
+### Set to an explicit version (upgrade OR downgrade)
+
+Actions → **Set version & tag** → **Run workflow**:
+
+| Input | Value |
+| --- | --- |
+| `mode` | `set` |
+| `bump` | *(ignored)* |
+| `version` | `2.0.0` *(or anything — lower than current is a downgrade, e.g. `0.9.6`)* |
+
+What happens: same as above, but the target version is whatever you typed. Downgrades are non-destructive — the previous tag and its Release stay in place.
+
+If the tag you typed already exists on origin, the workflow aborts and tells you to either pick a different version or re-publish via step 2.
+
+### Build & publish the GitHub Release
+
+Actions → **Release Electron App** → **Run workflow**:
+
+| Input | Value |
+| --- | --- |
+| `tag` | *(leave blank to build whatever is currently on main — i.e. the commit step 1 just pushed)* |
+
+The runner checks out that ref, runs `electron-builder --publish always`, and creates a GitHub Release named after the version in `package.json`. mac / win / linux all build in parallel.
+
+### Re-publish an existing tag (accidental delete, rebuild, …)
+
+Actions → **Release Electron App** → **Run workflow**:
+
+| Input | Value |
+| --- | --- |
+| `tag` | `v1.0.0` *(fill the tag you want to re-publish)* |
+
+The runner checks out that tag, rebuilds, and overwrites the existing Release with fresh artifacts.
+
+### Deleting releases / tags
+
+The workflows never delete. To clean up, do it from GitHub's web UI (repo → Releases → trash icon on the release) or from any terminal that has the `gh` CLI:
+
+```bash
+# Delete just the Release (keep the tag — re-publishable via step above)
+gh release delete v1.0.0
+
+# Delete Release + tag
+gh release delete v1.0.0 --yes
+git push origin --delete v1.0.0
+```
+
+Or mark it **Draft** in the web UI to hide without losing it.
+
 ## FAQ
 
-**Why does Claude Code still use a different model after opening the terminal?**
-Your `~/.claude/settings.json` `env` block overrides terminal env vars. The app detects this and offers a one-click clean (with backup). See *Env Override Guard* above.
+**Why doesn't this app touch my `~/.claude/settings.json`?**
+Because it doesn't need to. Every alias launches Claude Code with two flags: `--setting-sources ""` skips user / project / local settings files entirely, and `--settings "$CC_MODE_DIR/<ModelName>.json"` loads a per-mode temp JSON (named after the bound model, regenerated on every click) at **higher priority than any source** — including `~/.claude/settings.json`. App settings live in `$CC_MODE_DIR`, never in your home directory.
 
 **The `TSM AdjustCapsLock…` / `IMKCFRunLoopWakeUpReliable` log lines in dev?**
 Harmless macOS input-method noise present in every Electron app. The window auto-reloads if the renderer ever crashes.

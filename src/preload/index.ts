@@ -12,8 +12,6 @@ export interface ElectronAPI {
   testConnection: (url: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
-  getClaudeEnvOverrides: () => Promise<{ file: string; keys: string[] }[]>
-  clearClaudeEnvOverrides: () => Promise<{ ok: boolean; count?: number; error?: string }>
 }
 
 declare global {
@@ -27,7 +25,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testConnection: (url: string) => ipcRenderer.invoke('test-connection', url),
   selectTerminal: () => ipcRenderer.invoke('select-terminal'),
   launchTerminal: (payload: { terminalPath: string; command: string }) =>
-    ipcRenderer.invoke('launch-terminal', payload),
-  getClaudeEnvOverrides: () => ipcRenderer.invoke('get-claude-env-overrides'),
-  clearClaudeEnvOverrides: () => ipcRenderer.invoke('clear-claude-env-overrides')
+    ipcRenderer.invoke('launch-terminal', payload)
 })

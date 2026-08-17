@@ -33,14 +33,14 @@
 
 ### ▶️ 在终端中打开
 - 首次使用：通过文件选择器选择终端应用（Terminal.app、iTerm 或其他 —— 通用回退为生成 `.command` 文件）
-- 打开新的终端窗口并注入全部环境变量 —— **不会替你执行任何命令**
-- Plan 模式额外定义 `claude-plan` alias，并 echo 就绪提示
+- 打开新的终端窗口，并在该 session 内临时定义**当前选中模式**的 alias —— **不会写入 `~/.zshrc`**
+- Plan 模式输入 `cc-p`、Work 模式输入 `cc-w`；echo 就绪提示
 
-### 🛡️ 环境变量覆盖防护
-Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终端环境变量**，会静默覆盖你切换的模型。本应用会：
-- 每次启动终端前检测冲突变量（`ANTHROPIC_*`、`CLAUDE_CODE_SUBAGENT_MODEL`、`MAX_THINKING_TOKENS`）
-- 提示一键清除（先写入带时间戳的备份；无关配置原样保留）
-- Settings 页常驻显示覆盖状态，随时可清除
+### 🚫 绝不触碰 Claude Code 配置
+Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终端环境变量**。本应用靠每个 alias 上的两个 flag 绕开它：
+- `--setting-sources ""` —— Claude Code **完全跳过**所有默认 settings 文件（user / project / local）
+- `--settings "$CC_MODE_DIR/<ModelName>.json"` —— 以**最高优先级**加载该模型绑定的临时 JSON，覆盖一切
+- 本应用**从不读、不写** `~/.claude/settings.json` 或任何 settings 文件 —— 无需备份，不会冲突
 
 ### ⚙️ 设置与细节
 - 🌙 深色（默认）/ ☀️ 浅色主题 —— 基于 CSS 变量，头部或设置页均可切换
@@ -51,11 +51,12 @@ Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终�
 
 ![设置](docs/public/images/system_settings.png)
 
-## 生成的环境变量
+## 生成的别名
 
-注入终端的内容如下（以 Work 模式为例；Plan 模式额外增加 `MAX_THINKING_TOKENS` 和 alias）：
+textarea 显示的、也是 ▶️ 发送到新终端的内容，**始终跟随上方 Plan / Work 卡片的选择**。下面示例为 Plan 选中、绑 GLM-5.3：
 
 ```bash
+# Plan：开启 extended thinking + plan 权限模式
 export ANTHROPIC_BASE_URL="https://open.bigmodel.cn/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="sk-..."
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.3"
@@ -68,12 +69,39 @@ export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="glm-5.3"
 export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="glm-5.3"
 export ANTHROPIC_MODEL="glm-5.3"
 export CLAUDE_CODE_SUBAGENT_MODEL="glm-5.3"
+export MAX_THINKING_TOKENS=16000
+
+# 临时 settings 文件（通过 --settings 以最高优先级加载）。
+# 文件名 = 当前绑定的模型显示名 → 在 $CC_MODE_DIR 里一眼能找到。
+CC_MODE_DIR=$(mktemp -d -t cc-mode-XXXXXX)
+
+cat > "$CC_MODE_DIR/GLM-5.3.json" <<'CCMODE_EOF'
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-...",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL": "glm-5.3",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME": "glm-5.3",
+    "ANTHROPIC_MODEL": "glm-5.3",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "glm-5.3",
+    "MAX_THINKING_TOKENS": "16000"
+  }
+}
+CCMODE_EOF
+
+# 别名 —— --setting-sources "" 禁用默认源；--settings 以最高优先级加载临时文件
+alias cc-p='claude --permission-mode plan --setting-sources "" --settings "$CC_MODE_DIR/GLM-5.3.json"'
 ```
 
-| 模式 | Thinking | 启动方式 |
-| --- | --- | --- |
-| Plan | ✅ `MAX_THINKING_TOKENS=16000` | `claude-plan` → `claude --permission-mode plan` |
-| Work | ➖ 默认 | 直接运行 `claude` |
+切到 Work 卡片会自动重新生成同一结构——去掉 `MAX_THINKING_TOKENS` 行，临时文件变 `$CC_MODE_DIR/MiniMax-M3.json`，别名变 `cc-w='claude --setting-sources "" --settings "$CC_MODE_DIR/MiniMax-M3.json"'`。切完卡片再点 ▶️ 就开一个新 terminal 跑新模式。
+
+`--setting-sources ""` 跳过所有默认 settings 文件（user / project / local），所以 `~/.claude/settings.json` 永远不会被加载；`--settings "$CC_MODE_DIR/<ModelName>.json"` 再以**最高优先级**加载对应模型的临时 JSON，让它成为单一来源。
 
 ## 编译环境要求
 
@@ -164,7 +192,7 @@ npm run dist    # 打包安装包（electron-builder）
 
 ```
 src/
-├── main/            # Electron 主进程（IPC、终端启动、覆盖防护）
+├── main/            # Electron 主进程（IPC、终端启动）
 ├── preload/         # contextBridge API
 └── renderer/
     └── src/
@@ -175,10 +203,98 @@ src/
         └── assets/        # 全局样式
 ```
 
+## 发布流程
+
+发布是**两步手动操作**——全自动触发一律没有。两步都在 GitHub 的 Actions 页面里完成，不需要本地命令行。
+
+| 步骤 | 工作流 | 作用 |
+| --- | --- | --- |
+| 1 | **Set version & tag** | 写入 `release vX.Y.Z` 提交，把 `vX.Y.Z` tag 推到 origin。旧的 tag / release 一个不动。 |
+| 2 | **Release Electron App** | 构建 mac / win / linux 产物，创建或更新 GitHub Release。 |
+
+还有个辅助工作流 **List releases**，在动手前先看看服务器上已经有哪些版本。
+
+### 一次性配置（在 GitHub 网页上）
+
+仓库 → **Settings → Actions → General** → **Workflow permissions** → 选 **Read and write permissions** → Save。不设这个 runner 推不回去。
+
+### 看现有版本
+
+Actions → **List releases** → **Run workflow** → 等 → 进这次运行 → 展开 **Print releases + tags**。输出两段：
+
+- **Releases**（`gh release list`）—— 所有 GitHub Release，带状态（Published / Draft / Pre-release）
+- **Tags**（`git ls-remote --tags`）—— 所有 tag，包括 release 被删了的
+
+第二段有、第一段没有的 tag → 它的 release 被删了 —— 第 2 步填这个 tag 就能重发。
+
+### 升级（自动算 patch / minor / major）
+
+Actions → **Set version & tag** → **Run workflow**：
+
+| 输入 | 值 |
+| --- | --- |
+| `mode` | `auto` |
+| `bump` | `patch`（或 `minor` / `major`） |
+| `version` | 留空 |
+
+会改 `package.json` + `pnpm-lock.yaml` + `SettingsPanel.vue` 里的版本号，提交 `release vX.Y.Z`，推 tag。**不构建**，还得走第 2 步。
+
+### 直接指定版本（升级 或 降级）
+
+Actions → **Set version & tag** → **Run workflow**：
+
+| 输入 | 值 |
+| --- | --- |
+| `mode` | `set` |
+| `bump` | 无所谓 |
+| `version` | `2.0.0`（任意值，比当前低就是降级，比如 `0.9.6`） |
+
+效果同上，但目标版本是你填的。降级不破坏旧的——之前的 tag 和 release 完整保留。
+
+如果填的 tag 在 origin 上已经存在，工作流**直接 abort**，提示你换个版本号或者用第 2 步重跑那个 tag。
+
+### 构建并发布 GitHub Release
+
+Actions → **Release Electron App** → **Run workflow**：
+
+| 输入 | 值 |
+| --- | --- |
+| `tag` | 留空（构建当前 main HEAD——也就是第 1 步刚推上去的那个提交） |
+
+runner checkout 这个 ref，跑 `electron-builder --publish always`，按 `package.json` 里的版本号创建 GitHub Release。mac / win / linux 并行构建。
+
+### 重新发布某个 tag（误删恢复、重打）
+
+Actions → **Release Electron App** → **Run workflow**：
+
+| 输入 | 值 |
+| --- | --- |
+| `tag` | `v1.0.0`（填要重打的 tag） |
+
+runner checkout 这个 tag，重新构建，用新产物覆盖已有 Release。
+
+### 删 release / tag
+
+工作流从不主动删。要清理由你手动：
+
+GitHub 网页：仓库 → Releases → 找到要删的，点垃圾桶图标。
+
+或者本地有 `gh` CLI：
+```bash
+# 只删 Release（tag 留着——上面「重新发布」流程能恢复）
+gh release delete v1.0.0
+
+# Release 和 tag 都删
+gh release delete v1.0.0 --yes
+git push origin --delete v1.0.0
+```
+
+或者更保守：在 GitHub UI 把 Release 改成 **Draft** 隐藏起来，tag 和所有产物都还在。
+
 ## 常见问题
 
-**打开终端后 Claude Code 为什么还是用了别的模型？**
-`~/.claude/settings.json` 的 `env` 块会覆盖终端环境变量。应用会检测到这一点并提供一键清除（带备份），见上方「环境变量覆盖防护」。
+**为什么本应用不读写我的 `~/.claude/settings.json`？**
+不需要。每个 alias 都带两个 flag 启动 Claude Code：`--setting-sources ""` 完全跳过 user / project / local 三层 settings，`--settings "$CC_MODE_DIR/<ModelName>.json"` 再以**最高优先级**加载每次点击新生成的临时 JSON（以绑定模型显示名命名）。app 的配置只活在 `$CC_MODE_DIR` 里，从不碰用户的 home 目录。
 
 **开发时日志里的 `TSM AdjustCapsLock…` / `IMKCFRunLoopWakeUpReliable` 是什么？**
 macOS 输入法框架的无害噪音，所有 Electron 应用都有。渲染进程若崩溃，窗口会自动重载。

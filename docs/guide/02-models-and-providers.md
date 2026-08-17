@@ -45,7 +45,7 @@ Principle: **spend expensive tokens only on thinking; leave execution to cheap m
 
 ## Injected environment variables
 
-When opening a terminal (or copying the command block), these vars are injected, all pointing at the currently selected mode's bound model:
+When opening a terminal (or copying the command block), the snippet **always reflects the currently selected mode card** (Plan or Work). It keeps the original `export KEY="VALUE"` form, drops one temp JSON file at `$CC_MODE_DIR/<ModelName>.json` (created on each click via `mktemp -d`), and defines the corresponding alias. Every variable below points at that mode's bound model:
 
 | Variable | Purpose |
 | --- | --- |
@@ -56,11 +56,21 @@ When opening a terminal (or copying the command block), these vars are injected,
 | `CLAUDE_CODE_SUBAGENT_MODEL` | Model used by subagents (Task tool) |
 | `MAX_THINKING_TOKENS` (Plan only) | Enables extended thinking |
 
-## Env override guard (important)
+The temp file is named after the bound model's **display name** (sanitized for the filesystem), so it's instantly findable in `$CC_MODE_DIR` — e.g. `GLM-5.3.json` for the Plan binding of "GLM-5.3", `MiniMax-M3.json` for the Work binding of "MiniMax-M3". The alias loads it via `--settings "$CC_MODE_DIR/<ModelName>.json"` — which has **higher priority than any other source**, including `~/.claude/settings.json`.
 
-The `env` block in Claude Code's `~/.claude/settings.json` takes **precedence over terminal environment variables**. If it contains `ANTHROPIC_*` keys (commonly written by other switching tools), your terminal exports are silently overridden — the banner keeps showing the old model.
+Switching modes: click the other card. The textarea and the next ▶️ launch both regenerate with the other mode's bindings (and a different filename, reflecting the other bound model).
 
-How this app handles it:
-- Checks automatically before ▶️ opens a terminal; prompts when conflicts are found
-- Cleaning **backs up first** (`settings.json.cc-backup-<timestamp>`) and removes only `ANTHROPIC_*` / `CLAUDE_CODE_SUBAGENT_MODEL` / `MAX_THINKING_TOKENS` — everything else (permissions, model, …) stays intact
-- ⚙️ Settings shows the override status permanently, cleanable anytime
+## Why this never touches `~/.claude/settings.json`
+
+The `env` block in Claude Code's `~/.claude/settings.json` takes **precedence over terminal environment variables**. To bypass it without ever reading or modifying that file, every alias invokes Claude Code with two flags:
+
+```
+claude --setting-sources "" --settings "$CC_MODE_DIR/<ModelName>.json"
+```
+
+- `--setting-sources ""` tells Claude Code to skip **all** default settings files (user / project / local).
+- `--settings <file>` then loads the per-mode temp JSON at **highest priority** — it overrides both shell env and any default settings source.
+
+Net effect: the app never opens, writes, or backs up `~/.claude/settings.json`. Conflict with cc-switch (or any other tool that writes that file) is structurally impossible — the app's settings live in `$CC_MODE_DIR`, generated fresh on every launch, and never touch the user's home directory.
+
+Consequence: a session launched via `cc-p` / `cc-w` runs with a clean default config — your permissions allow-list, MCP servers, custom slash commands, and hooks defined in `~/.claude/settings.json` are **also** skipped for that session. If you depend on those, run plain `claude` separately.

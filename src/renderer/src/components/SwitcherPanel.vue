@@ -28,8 +28,8 @@
     <div class="card">
       <div class="command-header">
         <h3>
-          {{ t('switcher.cliTitle') }}
-          <span>{{ t('switcher.cliHint') }}</span>
+          {{ t('switcher.aliasesTitle') }}
+          <span>{{ t('switcher.aliasesHint') }}</span>
         </h3>
         <div class="command-actions">
           <IconButton :icon="'▶️'" :tip="t('switcher.launch')" variant="primary" @confirm="openInTerminal" />
@@ -41,18 +41,8 @@
         </div>
       </div>
       <textarea class="command" readonly :value="command"></textarea>
-      <div class="command-tip">{{ t('switcher.tip') }}</div>
+      <div class="command-tip">{{ t('switcher.aliasesTip') }}</div>
     </div>
-
-    <!-- settings.json env override warning -->
-    <ConfirmModal
-      v-if="pendingOverrideClean"
-      :title="t('switcher.overrideTitle')"
-      :message="t('switcher.overrideMsg', { count: overrideCount })"
-      :confirm-text="t('switcher.overrideClean')"
-      @confirm="cleanOverridesAndLaunch"
-      @cancel="pendingOverrideClean = false"
-    />
   </section>
 </template>
 
@@ -66,7 +56,6 @@ import { useToast } from '../composables/useToast'
 import { copyText } from '../utils/clipboard'
 import ModeCard from './ModeCard.vue'
 import IconButton from './IconButton.vue'
-import ConfirmModal from './ConfirmModal.vue'
 
 const { models, planModelId, workModelId, planModel, workModel } = useModels()
 const { t } = useI18n()
@@ -76,52 +65,108 @@ const toast = useToast()
 const currentMode = ref<Mode>('plan')
 const copied = ref(false)
 
-// settings.json override warning state
-const pendingOverrideClean = ref(false)
-const overrideCount = ref(0)
+/** Escape a value for inclusion inside `export KEY="..."` (double-quoted shell string). */
+function dq(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')
+}
 
-const currentModel = computed(() => (currentMode.value === 'plan' ? planModel.value : workModel.value))
-
-/** Plain export lines pointing every Claude Code role at the bound model */
+/**
+ * Original `export KEY="VALUE"` lines (unchanged form). The shell ends up
+ * reflecting whichever mode was exported last; the per-mode `--settings`
+ * file below then takes precedence when the actual `claude` invocation runs.
+ */
 function envExports(m: ModelConfig, mode: Mode): string[] {
   const lines = [
-    `export ANTHROPIC_BASE_URL="${m.baseUrl}"`,
-    `export ANTHROPIC_AUTH_TOKEN="${m.apiKey}"`,
-    `export ANTHROPIC_DEFAULT_OPUS_MODEL="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_SONNET_MODEL="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_HAIKU_MODEL="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_FABLE_MODEL="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="${m.modelID}"`,
-    `export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="${m.modelID}"`,
-    `export ANTHROPIC_MODEL="${m.modelID}"`,
-    `export CLAUDE_CODE_SUBAGENT_MODEL="${m.modelID}"`
+    `export ANTHROPIC_BASE_URL="${dq(m.baseUrl)}"`,
+    `export ANTHROPIC_AUTH_TOKEN="${dq(m.apiKey)}"`,
+    `export ANTHROPIC_DEFAULT_OPUS_MODEL="${dq(m.modelID)}"`,
+    `export ANTHROPIC_DEFAULT_SONNET_MODEL="${dq(m.modelID)}"`,
+    `export ANTHROPIC_DEFAULT_HAIKU_MODEL="${dq(m.modelID)}"`,
+    `export ANTHROPIC_DEFAULT_FABLE_MODEL="${dq(m.modelID)}"`,
+    `export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="${dq(m.modelID)}"`,
+    `export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="${dq(m.modelID)}"`,
+    `export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="${dq(m.modelID)}"`,
+    `export ANTHROPIC_DEFAULT_FABLE_MODEL_NAME="${dq(m.modelID)}"`,
+    `export ANTHROPIC_MODEL="${dq(m.modelID)}"`,
+    `export CLAUDE_CODE_SUBAGENT_MODEL="${dq(m.modelID)}"`
   ]
   if (mode === 'plan') lines.push(`export MAX_THINKING_TOKENS=16000`)
   return lines
 }
 
-/** The one alias: plan permission mode + nothing else (env comes from exports) */
-const PLAN_ALIAS = "alias claude-plan='claude --permission-mode plan'"
+/**
+ * Build the JSON payload that goes into the per-mode temp settings file.
+ * `--settings <file>` has higher priority than both shell env and
+ * `~/.claude/settings.json`, so this is the authoritative source for the
+ * `claude` invocation — no conflict with `~/.claude/settings.json` is possible.
+ */
+function settingsJsonFor(m: ModelConfig, mode: Mode): string {
+  const env: Record<string, string> = {
+    ANTHROPIC_BASE_URL: m.baseUrl,
+    ANTHROPIC_AUTH_TOKEN: m.apiKey,
+    ANTHROPIC_DEFAULT_OPUS_MODEL: m.modelID,
+    ANTHROPIC_DEFAULT_SONNET_MODEL: m.modelID,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: m.modelID,
+    ANTHROPIC_DEFAULT_FABLE_MODEL: m.modelID,
+    ANTHROPIC_DEFAULT_OPUS_MODEL_NAME: m.modelID,
+    ANTHROPIC_DEFAULT_SONNET_MODEL_NAME: m.modelID,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME: m.modelID,
+    ANTHROPIC_DEFAULT_FABLE_MODEL_NAME: m.modelID,
+    ANTHROPIC_MODEL: m.modelID,
+    CLAUDE_CODE_SUBAGENT_MODEL: m.modelID
+  }
+  if (mode === 'plan') env.MAX_THINKING_TOKENS = '16000'
+  return JSON.stringify({ env }, null, 2)
+}
+
+/** Sanitize a model's display name into something safe to use as a filename. */
+function safeFileName(name: string): string {
+  const cleaned = name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^_+|_+$/g, '')
+  return cleaned || 'model'
+}
+
+function aliasFor(mode: Mode, filename: string): string {
+  const permission = mode === 'plan' ? '--permission-mode plan ' : ''
+  return `alias cc-${mode[0]}='claude ${permission}--setting-sources "" --settings "$CC_MODE_DIR/${filename}.json"'`
+}
+
+/**
+ * Pick the active (mode, model) pair: currentMode's model if bound, else fall
+ * back to whichever mode is bound. Returns null when nothing is bound.
+ */
+const active = computed<{ mode: Mode; model: ModelConfig } | null>(() => {
+  if (currentMode.value === 'plan' && planModel.value) {
+    return { mode: 'plan', model: planModel.value }
+  }
+  if (currentMode.value === 'work' && workModel.value) {
+    return { mode: 'work', model: workModel.value }
+  }
+  if (planModel.value) return { mode: 'plan', model: planModel.value }
+  if (workModel.value) return { mode: 'work', model: workModel.value }
+  return null
+})
 
 const command = computed(() => {
-  const m = currentModel.value
-  if (!m) return t('switcher.needModel')
+  const a = active.value
+  if (!a) return t('switcher.needModel')
+  const { mode, model: m } = a
+  const filename = safeFileName(m.name)
+  const desc = mode === 'plan' ? t('switcher.ccpDesc') : t('switcher.ccwDesc')
 
-  const lines = [
-    '# Set Claude Code to use custom endpoint',
-    ...envExports(m, currentMode.value).slice(0, 2),
+  return [
+    `# ${desc}`,
+    ...envExports(m, mode),
     '',
-    '# Map model aliases so all Claude Code roles point to this model',
-    ...envExports(m, currentMode.value).slice(2)
-  ]
-  if (currentMode.value === 'plan') {
-    lines.push('', '# Plan mode: extended thinking + plan permission alias', PLAN_ALIAS)
-  } else {
-    lines.push('', '# Work mode: default permissions — just run claude')
-  }
-  return lines.join('\n')
+    `# ${t('switcher.tmpDir')}`,
+    `CC_MODE_DIR=$(mktemp -d -t cc-mode-XXXXXX)`,
+    '',
+    `cat > "$CC_MODE_DIR/${filename}.json" <<'CCMODE_EOF'`,
+    settingsJsonFor(m, mode),
+    `CCMODE_EOF`,
+    '',
+    `# ${t('switcher.aliasesLabel')}`,
+    aliasFor(mode, filename)
+  ].join('\n')
 })
 
 async function copyCommand(): Promise<void> {
@@ -131,39 +176,15 @@ async function copyCommand(): Promise<void> {
 }
 
 async function openInTerminal(): Promise<void> {
-  if (!currentModel.value) {
+  if (!active.value) {
     toast.error(t('switcher.launchNoModel'))
     return
   }
-  // settings.json env silently overrides the terminal env — check first
-  const overrides = await window.electronAPI.getClaudeEnvOverrides()
-  const count = overrides.reduce((n, e) => n + e.keys.length, 0)
-  if (count > 0) {
-    overrideCount.value = count
-    pendingOverrideClean.value = true
-    return
-  }
-  await doLaunch()
-}
-
-async function cleanOverridesAndLaunch(): Promise<void> {
-  pendingOverrideClean.value = false
-  const r = await window.electronAPI.clearClaudeEnvOverrides()
-  if (!r.ok) {
-    toast.error(t('switcher.overrideCleanFail', { error: r.error ?? '' }))
-    return
-  }
-  toast.success(t('switcher.overrideCleaned', { count: r.count ?? 0 }))
-  await doLaunch()
-}
-
-async function doLaunch(): Promise<void> {
-  const m = currentModel.value
-  if (!m) return
-  const parts = [...envExports(m, currentMode.value)]
-  const runCmd = currentMode.value === 'plan' ? (parts.push(PLAN_ALIAS), 'claude-plan') : 'claude'
-  parts.push(`echo "✅ env ready — run: ${runCmd}"`)
-  const r = await launchInTerminal(parts.join('; '))
+  const setup = [
+    command.value,
+    `echo "${t('switcher.launchHint')}"`
+  ].join('\n')
+  const r = await launchInTerminal(setup)
   if (r.ok) {
     toast.success(t('switcher.launchOk'))
   } else if (r.error !== 'cancelled') {
@@ -194,7 +215,7 @@ async function doLaunch(): Promise<void> {
 
 .command {
   width: 100%;
-  height: 170px;
+  height: 220px;
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--code-green);
@@ -206,7 +227,6 @@ async function doLaunch(): Promise<void> {
   resize: none;
   outline: none;
 }
-
 .command-tip {
   margin-top: 8px;
   font-size: 11px;

@@ -45,7 +45,7 @@
 
 ## 注入的环境变量
 
-打开终端时（或复制的命令块）会注入以下变量，全部指向当前选中模式绑定的模型：
+打开终端时（或复制的命令块），片段**始终跟随上方 Plan / Work 卡片的选择**。保留 `export KEY="VALUE"` 形式，在 `$CC_MODE_DIR/<ModelName>.json`（每次点击通过 `mktemp -d` 新建）写一个临时 JSON，并定义对应的 alias。下面所有变量都指向当前选中模式绑定的模型：
 
 | 变量 | 作用 |
 | --- | --- |
@@ -56,11 +56,21 @@
 | `CLAUDE_CODE_SUBAGENT_MODEL` | 子代理（Task 工具）用的模型 |
 | `MAX_THINKING_TOKENS`（仅 Plan） | 开启 extended thinking |
 
-## 环境覆盖防护（重要）
+临时文件以绑定模型的**显示名**（做了文件系统安全化处理）命名，所以进 `$CC_MODE_DIR` 一眼能找到——比如 Plan 绑了「GLM-5.3」就是 `GLM-5.3.json`，Work 绑了「MiniMax-M3」就是 `MiniMax-M3.json`。alias 通过 `--settings "$CC_MODE_DIR/<ModelName>.json"` 加载——其优先级**高于任何其他来源**，包括 `~/.claude/settings.json`。
 
-Claude Code 的 `~/.claude/settings.json` 中 `env` 块**优先级高于终端环境变量**。如果里面有 `ANTHROPIC_*` 等配置（常见于其他切换工具写入），你在终端 export 的配置会被静默覆盖——表现为 banner 显示的还是旧模型。
+切换模式：点另一张卡片。textarea 和下一次 ▶️ 启动都会用另一种模式的绑定（和对应的文件名）重新生成。
 
-本应用的处理：
-- ▶️ 打开终端前自动检测，发现冲突弹窗提示
-- 清除时**先备份**（`settings.json.cc-backup-<时间戳>`），只删 `ANTHROPIC_*` / `CLAUDE_CODE_SUBAGENT_MODEL` / `MAX_THINKING_TOKENS`，其余配置（permissions、model 等）原样保留
-- ⚙️ Settings 页常驻显示覆盖状态，可随时清除
+## 为什么本应用不读写 `~/.claude/settings.json`
+
+Claude Code 的 `~/.claude/settings.json` 中 `env` 块**优先级高于终端环境变量**。要在完全不读不写该文件的前提下绕开它，每个 alias 都带两个 flag 启动 Claude Code：
+
+```
+claude --setting-sources "" --settings "$CC_MODE_DIR/<ModelName>.json"
+```
+
+- `--setting-sources ""` 让 Claude Code 完全跳过所有默认 settings 文件（user / project / local）
+- `--settings <file>` 再以**最高优先级**加载对应模式的临时 JSON——同时压过 shell env 和任何默认 settings 源
+
+效果：app 从不打开、写入或备份 `~/.claude/settings.json`。和 cc-switch（或任何写入该文件的工具）结构性无冲突——app 的配置只活在 `$CC_MODE_DIR` 里，每次启动重新生成，绝不碰用户的 home 目录。
+
+副作用：通过 `cc-p` / `cc-w` 启动的 session 是一个**干净配置**——你写在 `settings.json` 里的 permissions 白名单、MCP server、自定义 slash command、hook 脚本在该 session 内**也会被跳过**。如果依赖这些，请另外直接跑 `claude`。

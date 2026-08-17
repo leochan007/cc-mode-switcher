@@ -1,0 +1,141 @@
+name: Set version & tag
+
+# Two ways to pick the target version:
+#   - mode=auto → bump the current version by patch / minor / major
+#   - mode=set  → use the explicit `version` input (works for both upgrade AND downgrade)
+#
+# Old tags/releases are NOT deleted — downgrade keeps everything, cleanup is manual.
+# If the target tag already exists on origin, this workflow refuses; re-publish the
+# existing tag via "Release Electron App" → Run workflow → tag=… instead.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'auto = bump current; set = use explicit `version` (can be lower than current)'
+        type: choice
+        options: [auto, set]
+        default: auto
+      bump:
+        description: 'Bump type, only used when mode=auto'
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      version:
+        description: 'Target X.Y.Z, only used when mode=set'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: set-version
+  cancel-in-progress: false
+
+jobs:
+  set:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute target version
+        id: version
+        env:
+          MODE: ${{ inputs.mode }}
+          BUMP: ${{ inputs.bump }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          CURRENT=$(node -p "require('./package.json').version")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          if [ "$MODE" = "set" ]; then
+            if [ -z "$INPUT_VERSION" ]; then
+              echo "::error::mode=set requires the 'version' input (e.g. 0.9.5)"
+              exit 1
+            fi
+            NEW="$INPUT_VERSION"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+            case "$BUMP" in
+              major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+              patch) PATCH=$((PATCH + 1)) ;;
+            esac
+            NEW="$MAJOR.$MINOR.$PATCH"
+          fi
+
+          if ! [[ "$NEW" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Resolved version '$NEW' is not semver (X.Y.Z)"
+            exit 1
+          fi
+
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+          echo "Target: $CURRENT → $NEW (tag v$NEW)"
+
+      - name: Reject if target tag already exists on origin
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            echo "::error::Tag '${TAG}' already exists on origin."
+            echo "::error::To re-release an existing tag: Actions → 'Release Electron App' → Run workflow → tag=${TAG}."
+            echo "::error::To pick a different version: change the inputs and re-run."
+            exit 1
+          fi
+
+      - name: Update package.json
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.version = process.env.NEW;
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          '
+
+      - name: Sync version literal in SettingsPanel.vue
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+        run: |
+          # Match the single vX.Y.Z literal anywhere in the file.
+          sed -i -E "s/v[0-9]+\.[0-9]+\.[0-9]+/v${NEW}/g" src/renderer/src/components/SettingsPanel.vue
+
+      - name: Refresh pnpm lockfile (version-only change)
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --lockfile-only
+
+      - name: Show what's about to be committed
+        run: git status --short
+
+      - name: Commit, tag, push
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          NEW: ${{ steps.version.outputs.new }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add package.json pnpm-lock.yaml src/renderer/src/components/SettingsPanel.vue
+          if git diff --cached --quiet; then
+            echo "::error::No changes to commit — resolved version equals current?"
+            exit 1
+          fi
+
+          git commit -m "release v${NEW}"
+          git tag "$TAG"
+
+          git push origin HEAD:main
+          git push origin "$TAG"

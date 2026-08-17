@@ -95,54 +95,6 @@ ipcMain.handle('select-terminal', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
-// IPC: detect env keys in Claude Code settings that override terminal env.
-// settings.json `env` takes precedence over the process environment, silently
-// defeating the model this app injects — surface and offer to clean it.
-const OVERRIDE_KEY = (k: string) =>
-  k.startsWith('ANTHROPIC_') || k === 'CLAUDE_CODE_SUBAGENT_MODEL' || k === 'MAX_THINKING_TOKENS'
-
-function claudeSettingsFiles(): string[] {
-  const dir = path.join(os.homedir(), '.claude')
-  return [path.join(dir, 'settings.json'), path.join(dir, 'settings.local.json')]
-}
-
-function overrideKeysIn(file: string): string[] {
-  try {
-    const cfg = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return Object.keys(cfg.env ?? {})
-      .filter(OVERRIDE_KEY)
-      .sort()
-  } catch {
-    return []
-  }
-}
-
-ipcMain.handle('get-claude-env-overrides', () =>
-  claudeSettingsFiles()
-    .map((file) => ({ file, keys: overrideKeysIn(file) }))
-    .filter((e) => e.keys.length > 0)
-)
-
-ipcMain.handle('clear-claude-env-overrides', (): { ok: boolean; count?: number; error?: string } => {
-  let count = 0
-  try {
-    for (const file of claudeSettingsFiles()) {
-      const keys = overrideKeysIn(file)
-      if (keys.length === 0) continue
-      const raw = fs.readFileSync(file, 'utf8')
-      fs.writeFileSync(`${file}.cc-backup-${Date.now()}`, raw)
-      const cfg = JSON.parse(raw)
-      for (const k of keys) delete cfg.env[k]
-      if (Object.keys(cfg.env).length === 0) delete cfg.env
-      fs.writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n')
-      count += keys.length
-    }
-    return { ok: true, count }
-  } catch (err: any) {
-    return { ok: false, error: err?.message ?? String(err) }
-  }
-})
-
 /** Escape a string for use inside a double-quoted AppleScript string literal */
 function applescriptEscape(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
