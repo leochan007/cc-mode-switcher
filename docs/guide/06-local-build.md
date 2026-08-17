@@ -92,7 +92,7 @@ pnpm install
 pnpm run dev
 ```
 
-The GitHub mirror at `https://npmmirror.com/mirrors/electron/` is the fastest source if you're behind GFW — set it via `ELECTRON_MIRROR` env var or `.npmrc` (see [Requirements → Mirrors](../02-models-and-providers#mirrors-for-mainland-china)).
+The GitHub mirror at `https://npmmirror.com/mirrors/electron/` is the fastest source if you're behind GFW — set it via `ELECTRON_MIRROR` env var or `.npmrc` (see [Requirements → Mirrors](02-models-and-providers#mirrors-for-mainland-china)).
 
 ## Level 5 — Nuclear: wipe everything pnpm / electron / electron-builder knows about
 

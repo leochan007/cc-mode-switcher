@@ -92,7 +92,7 @@ pnpm install
 pnpm run dev
 ```
 
-国内网络走 `https://npmmirror.com/mirrors/electron/` 最快，设 `ELECTRON_MIRROR` 环境变量或 `.npmrc` 即可（见 [编译环境要求 → 国内镜像加速](../02-models-and-providers#国内镜像加速)）。
+国内网络走 `https://npmmirror.com/mirrors/electron/` 最快，设 `ELECTRON_MIRROR` 环境变量或 `.npmrc` 即可（见 [编译环境要求 → 国内镜像加速](02-models-and-providers#国内镜像加速)）。
 
 ## 第 5 级 —— 核弹：pnpm / electron / electron-builder 全部清干净
 
