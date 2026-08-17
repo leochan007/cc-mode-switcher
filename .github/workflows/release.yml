@@ -146,7 +146,14 @@ jobs:
         shell: bash
         run: pnpm install --frozen-lockfile
 
-      - name: Build and publish
+      # electron-builder only packages — it does not compile. `out/` is
+      # gitignored, so it must be produced here or the asar ends up empty and
+      # the build fails with "entry file out/main/index.js ... was not found".
+      - name: Build (electron-vite)
+        shell: bash
+        run: pnpm build
+
+      - name: Package and publish
         # --publish always: create the GitHub Release if missing, overwrite artifacts if it exists.
         shell: bash
         run: pnpm exec electron-builder --publish always

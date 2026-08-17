@@ -14,7 +14,7 @@
     "docs:dev": "vitepress dev docs",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "dist": "electron-builder",
+    "dist": "electron-vite build && electron-builder",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
