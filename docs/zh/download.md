@@ -47,4 +47,4 @@ chmod +x 'CC Mode Switcher-*.AppImage'
 
 ---
 
-初次使用？继续看 [01 · 快速上手](/zh/guide/01-getting-started) —— 五步完成首次配置。
+初次使用？先看 [00 · 产品介绍](/zh/guide/00-introduction) 了解功能与设计理念，再看 [01 · 快速上手](/zh/guide/01-getting-started) 五步完成首次配置。

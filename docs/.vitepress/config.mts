@@ -28,7 +28,7 @@ export default defineConfig({
         nav: [
           { text: 'Download', link: '/download' },
           { text: 'Index', link: '/' },
-          { text: 'Guide', link: '/guide/01-getting-started' },
+          { text: 'Guide', link: '/guide/00-introduction' },
           { text: 'Playbooks', link: '/guide/03-plan-mode-playbook' },
           { text: 'Example', link: '/guide/05-workflow-example' }
         ],
@@ -46,6 +46,7 @@ export default defineConfig({
             {
               text: 'Guide',
               items: [
+                { text: '00 · Introduction', link: '/guide/00-introduction' },
                 { text: '01 · Quick Start', link: '/guide/01-getting-started' },
                 { text: '02 · Models & Providers', link: '/guide/02-models-and-providers' }
               ]
@@ -79,6 +80,7 @@ export default defineConfig({
             {
               text: 'Guide',
               items: [
+                { text: '00 · Introduction', link: '/guide/00-introduction' },
                 { text: '01 · Quick Start', link: '/guide/01-getting-started' },
                 { text: '02 · Models & Providers', link: '/guide/02-models-and-providers' }
               ]
@@ -109,7 +111,7 @@ export default defineConfig({
         nav: [
           { text: '下载', link: '/zh/download' },
           { text: '文档索引', link: '/zh/' },
-          { text: '使用指南', link: '/zh/guide/01-getting-started' },
+          { text: '使用指南', link: '/zh/guide/00-introduction' },
           { text: '实战案例', link: '/zh/guide/03-plan-mode-playbook' }
         ],
         sidebar: {
@@ -126,6 +128,7 @@ export default defineConfig({
             {
               text: '使用指南',
               items: [
+                { text: '00 · 产品介绍', link: '/zh/guide/00-introduction' },
                 { text: '01 · 快速上手', link: '/zh/guide/01-getting-started' },
                 { text: '02 · 模型与 Provider 配置', link: '/zh/guide/02-models-and-providers' }
               ]
@@ -158,6 +161,7 @@ export default defineConfig({
             {
               text: '使用指南',
               items: [
+                { text: '00 · 产品介绍', link: '/zh/guide/00-introduction' },
                 { text: '01 · 快速上手', link: '/zh/guide/01-getting-started' },
                 { text: '02 · 模型与 Provider 配置', link: '/zh/guide/02-models-and-providers' }
               ]

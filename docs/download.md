@@ -49,5 +49,6 @@ AppleScript and `.command` files).
 
 ---
 
-New here? Continue to [01 · Quick Start](guide/01-getting-started.md) — first-time
-setup in five steps.
+New here? Start with [00 · Introduction](guide/00-introduction.md) — what the app
+does and the ideas behind it — then [01 · Quick Start](guide/01-getting-started.md)
+for first-time setup in five steps.

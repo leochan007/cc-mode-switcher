@@ -10,6 +10,7 @@ macOS / Windows / Linux installers live on **[GitHub Releases → latest](https:
 
 | Chapter | Contents | For whom |
 | --- | --- | --- |
+| [00 · Introduction](guide/00-introduction.md) | What it is, the problem it solves, design philosophy, feature overview | Everyone — start here |
 | [01 · Quick Start](guide/01-getting-started.md) | First-time setup and your first session in 5 minutes | New users |
 | [02 · Models & Providers](guide/02-models-and-providers.md) | Presets, autocomplete, connection test, env vars, override guard | Everyone |
 | [03 · Plan Mode Playbook](guide/03-plan-mode-playbook.md) | Producing plan documents (the intermediate artifact) with Plan mode | Core workflow |

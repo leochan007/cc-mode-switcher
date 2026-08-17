@@ -10,6 +10,7 @@ macOS / Windows / Linux 安装包发布在 **[GitHub Releases → 最新版](htt
 
 | 章节 | 内容 | 适合谁 |
 | --- | --- | --- |
+| [00 · 产品介绍](/zh/guide/00-introduction) | 它是什么、解决什么问题、设计理念、功能总览 | 所有人 —— 从这里开始 |
 | [01 · 快速上手](/zh/guide/01-getting-started) | 安装后 5 分钟完成首次配置并启动第一次会话 | 新用户 |
 | [02 · 模型与 Provider 配置](/zh/guide/02-models-and-providers) | 预设、自动补全、连接测试、环境变量清单、覆盖防护 | 所有用户 |
 | [03 · Plan 模式实战](/zh/guide/03-plan-mode-playbook) | 用 Plan 模式生成 plan 文档（中间产物），不动代码 | 核心工作流 |
