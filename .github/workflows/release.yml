@@ -23,9 +23,17 @@ on:
         description: 'Version to release — "1.2.3" or "v1.2.3". Leave empty to release the highest-semver tag on origin.'
         type: string
         default: ''
+      publish_final:
+        description: 'After build success, auto publish draft to public release?'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-electron-${{ github.workflow }}-${{ inputs.version || 'auto' }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -35,20 +43,11 @@ jobs:
           - macos-latest
           - windows-latest
           - ubuntu-latest
-
     runs-on: ${{ matrix.os }}
-
-    # Every matrix leg resolves the same tag; expose it so the publish job
-    # below can target the exact release without re-resolving.
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
-
-    # Force every JavaScript action (checkout / pnpm/action-setup / setup-node)
-    # to run on Node 24, clearing the Node 20 deprecation warning. Official
-    # GitHub opt-in: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
     steps:
       - uses: actions/checkout@v4.2.2
         with:
@@ -57,8 +56,6 @@ jobs:
 
       - name: Resolve target tag
         id: resolve
-        # Force bash — the windows-latest runner defaults to PowerShell, which
-        # can't parse `[ -z "$VAR" ]` / `[[ "$VAR" == v* ]]` etc.
         shell: bash
         env:
           INPUT_VERSION: ${{ inputs.version }}
@@ -68,13 +65,6 @@ jobs:
 
           if [ -z "$RAW" ]; then
             # Empty input → pick the highest semver tag on origin.
-            #
-            # `git ls-remote --tags origin` prints one line per tag:
-            #   <sha>\trefs/tags/v1.0.0
-            #   <sha>\trefs/tags/v1.0.0^{}    ← peeled (dereferenced) tag, same commit
-            # Strip refs/tags/, drop the peeled (^{}) lines, keep only vX.Y.Z,
-            # sort by semver, take the highest.
-
             echo "::debug::Raw \`git ls-remote --tags origin\` output:"
             git ls-remote --tags origin | sed 's/^/  /'
 
@@ -158,22 +148,17 @@ jobs:
         shell: bash
         run: pnpm build
 
-      - name: Package and publish
-        # --publish always: create the GitHub Release if missing, overwrite artifacts if it exists.
+      - name: Package and upload to draft release
+        # --publish always: create/update draft GitHub Release, upload artifacts.
         shell: bash
         run: pnpm exec electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # electron-builder's `releaseType` defaults to "draft" (see
-  # builder-util-runtime/out/publishOptions.d.ts). All three matrix legs upload
-  # into the SAME draft release. Flipping it to published happens only here,
-  # after every leg has succeeded — a release never goes public with a partial
-  # artifact set (e.g. dmg uploaded while the exe is still building). If any
-  # leg fails, the release stays a draft for inspection / re-run.
   publish:
     needs: release
     runs-on: ubuntu-latest
+    if: ${{ inputs.publish_final }}
     steps:
       - name: Publish draft release
         shell: bash
