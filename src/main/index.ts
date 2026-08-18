@@ -22,6 +22,7 @@ import {
   killSession,
   listSessions,
   replayBuffer,
+  pruneLaunchCache,
   SessionMeta,
   DEFAULT_CWD
 } from './pty'
@@ -74,6 +75,12 @@ function createMainWindow(): BrowserWindow {
 app.whenReady().then(() => {
   // Eagerly load config so any boot-time errors surface in the main console
   loadConfig()
+
+  // Prune stale .launch-cache entries (rev6: shared with external terminals,
+  // so cleanup policy applies uniformly). 1 day cutoff by default — by then
+  // any running shell has already sourced launch.sh and the cc-<role>()
+  // functions live in shell memory.
+  pruneLaunchCache()
 
   mainWindow = createMainWindow()
 
@@ -290,13 +297,26 @@ function shellQuote(s: string): string {
 
 /**
  * Write the launch script to a runnable `.command` file and open it with the
- * user's terminal app. The whole script runs in a single shell invocation —
- * critical, because `do script` over AppleScript feeds each newline as a
- * separate input which loses mktemp / export state between lines.
+ * user's terminal app.
+ *
+ * rev8: shebang is plain `#!/bin/zsh`. We tried `#!/bin/zsh -i` in rev7,
+ * but macOS Launch Services invokes `.command` files via `zsh <file>`
+ * (non-interactive). The `-i` flag is not reliably passed through; once
+ * the script body ends the shell exits and Terminal.app shows
+ * "[Process completed]". So the script body itself ends with `exec /bin/zsh`
+ * (see buildExternalSessionScript) which hands the session over to a fresh
+ * zsh that picks up the cc-<role>() functions via a transient ZDOTDIR hook.
+ *
+ * rev6 path selection: write to `$HOME/.cc-mode-switcher/.launch-cache/cmds/`
+ * (NOT /tmp). macOS Gatekeeper treats /tmp as an untrusted download dir and
+ * pops a "Yes, I trust this folder / No, exit" dialog; picking "No" makes
+ * Terminal.app quit the entire process. Home-dir files are user-authored.
  */
 function launchViaDotCommand(terminalPath: string, command: string): void {
-  const tmp = path.join(os.tmpdir(), `cc-mode-${Date.now()}.command`)
-  fs.writeFileSync(tmp, `#!/bin/zsh\n${command}\nexit 0\n`, { mode: 0o755 })
+  const cmdsDir = path.join(app.getPath('home'), '.cc-mode-switcher', '.launch-cache', 'cmds')
+  fs.mkdirSync(cmdsDir, { recursive: true })
+  const tmp = path.join(cmdsDir, `cc-mode-${Date.now()}.command`)
+  fs.writeFileSync(tmp, `#!/bin/zsh\n${command}\n`, { mode: 0o755 })
   // Clean up the temp file after 60 seconds so it doesn't pile up.
   setTimeout(() => {
     try { fs.unlinkSync(tmp) } catch { /* gone */ }

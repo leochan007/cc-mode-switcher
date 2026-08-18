@@ -105,7 +105,7 @@ import { useConfig } from './composables/useConfig'
 import { useSessions } from './composables/useSessions'
 import { useI18n } from './composables/useI18n'
 import { useToast } from './composables/useToast'
-import { buildLaunchScript, buildLaunchScripts, LaunchScriptEntry } from './shared/launchCommand'
+import { buildLaunchScript, buildLaunchScripts, buildExternalSessionScript, LaunchScriptEntry } from './shared/launchCommand'
 
 import AppHeader from './components/AppHeader.vue'
 import RolesTable from './components/RolesTable.vue'
@@ -202,9 +202,9 @@ async function readPromptCached(path: string): Promise<string> {
   return text
 }
 
-async function buildMultiRoleBootstrap(): Promise<string | null> {
+/** Build launch entries for every role that has a model bound */
+async function buildBoundEntries(): Promise<LaunchScriptEntry[]> {
   const bound = roles.value.filter((r) => r.model)
-  if (bound.length === 0) return null
   const entries: LaunchScriptEntry[] = []
   for (const role of bound) {
     const model = models.value.find((m) => m.id === role.model)
@@ -212,6 +212,11 @@ async function buildMultiRoleBootstrap(): Promise<string | null> {
     const prompt = role.systemPrompt ? await readPromptCached(role.systemPrompt) : ''
     entries.push({ role, model, systemPromptContent: prompt })
   }
+  return entries
+}
+
+async function buildMultiRoleBootstrap(): Promise<string | null> {
+  const entries = await buildBoundEntries()
   if (entries.length === 0) return null
   return buildLaunchScripts({ entries, description: 'cc-mode-switcher · all roles' })
 }
@@ -464,8 +469,10 @@ async function launchExternalPlainShell(cwd: string): Promise<void> {
   }
 }
 
-/** Run the role's launch script in external Terminal.app */
-async function launchExternalWithRole(roleId: string): Promise<void> {
+/** Run the role's launch script in external Terminal.app — single entry,
+ *  matching internal `openRoleTab`'s behaviour: only this role's
+ *  `cc-<role>()` function is defined in the external shell. */
+async function launchExternalWithRole(roleId: string, terminalPath?: string): Promise<void> {
   const role = roles.value.find((r) => r.id === roleId)
   const model = role?.model ? models.value.find((m) => m.id === role.model) : null
   if (!role || !model) {
@@ -477,9 +484,12 @@ async function launchExternalWithRole(roleId: string): Promise<void> {
   const prompt = role.systemPrompt
     ? await window.electronAPI.readTextFile(role.systemPrompt)
     : ''
-  const script = buildLaunchScript({ role, model, systemPromptContent: prompt })
+  const script = buildExternalSessionScript({
+    entries: [{ role, model, systemPromptContent: prompt }],
+    cwd
+  })
   const ok = await window.electronAPI.launchTerminal({
-    terminalPath: localStorage.getItem('cc_terminal') ?? '',
+    terminalPath: terminalPath ?? localStorage.getItem('cc_terminal') ?? '',
     command: script
   })
   if (!ok.ok && ok.error !== 'cancelled') {
@@ -524,17 +534,17 @@ async function onCloneTab(tabId: string): Promise<void> {
 }
 
 async function onOpenInExternalTerminal(payload: { roleId: string; command: string }): Promise<void> {
-  const terminalPath = localStorage.getItem('cc_terminal')
-  if (!terminalPath) {
+  // `payload.command` is the panel's preview bootstrap — deliberately ignored:
+  // the external window must run the full session script (cd + env + claude)
+  // to behave like the internal terminal. Rebuild it via launchExternalWithRole.
+  let final = localStorage.getItem('cc_terminal')
+  if (!final) {
     const picked = await window.electronAPI.selectTerminal()
     if (!picked) return
     localStorage.setItem('cc_terminal', picked)
+    final = picked
   }
-  const final = localStorage.getItem('cc_terminal')
-  if (!final) return
-  const r = await window.electronAPI.launchTerminal({ terminalPath: final, command: payload.command })
-  if (r.ok) toast.success(t('toast.launchOk'))
-  else if (r.error !== 'cancelled') toast.error(t('toast.launchFail', { error: r.error ?? '' }))
+  await launchExternalWithRole(payload.roleId, final)
 }
 
 // ---------- Cmd+T / Cmd+N handling ----------

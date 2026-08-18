@@ -172,7 +172,7 @@ function buildPtyEnv(
 }
 
 // -----------------------------------------------------------------------------
-// Temp session files
+// Temp session files (per-session mkdtemp; cleaned up on pty exit)
 // -----------------------------------------------------------------------------
 
 interface SessionFiles {
@@ -196,6 +196,70 @@ function cleanupSessionFiles(files: SessionFiles): void {
   } catch {
     /* best effort */
   }
+}
+
+// -----------------------------------------------------------------------------
+// External-terminal launch-cache (separate from internal pty session files).
+// External terminals write launch.sh / zdot/ / <role>.json here so the user
+// can call cc-<role>() from the shell that the .command drops back into.
+// Internal pty sessions do NOT use this directory — they get their own
+// /tmp/cc-ms-xxx/ temp dir via createSessionFiles above.
+// -----------------------------------------------------------------------------
+
+/** Shared .launch-cache dir used by external-terminal session scripts */
+export function launchCacheDir(): string {
+  return path.join(os.homedir(), '.cc-mode-switcher', '.launch-cache')
+}
+
+/**
+ * Remove entries in the shared .launch-cache dir older than `maxAgeMs`. Called
+ * at app startup so accumulated stale launch.sh / settings.json / zdot/
+ * .profile / zdot/.zshrc don't pile up. Uses mtime — atime is unreliable on
+ * macOS (file open doesn't always update it).
+ *
+ * Safe to run while a session is live: by the time files are old enough to
+ * prune (>1 day), the running shell has long since sourced launch.sh and the
+ * cc-<role>() functions live in shell memory, not on disk.
+ */
+export function pruneLaunchCache(maxAgeMs: number = 24 * 60 * 60 * 1000): void {
+  const dir = launchCacheDir()
+  if (!fs.existsSync(dir)) return
+  const cutoff = Date.now() - maxAgeMs
+  let pruned = 0
+  const walk = (entry: string): void => {
+    let stats: fs.Stats
+    try {
+      stats = fs.statSync(entry)
+    } catch {
+      return
+    }
+    if (stats.isDirectory()) {
+      let children: string[]
+      try {
+        children = fs.readdirSync(entry)
+      } catch {
+        return
+      }
+      for (const c of children) walk(path.join(entry, c))
+      // rmdir empty dir (e.g. zdot/) after pruning its children
+      try {
+        if (fs.readdirSync(entry).length === 0) fs.rmdirSync(entry)
+      } catch {
+        /* not empty or already gone */
+      }
+      return
+    }
+    if (stats.mtimeMs < cutoff) {
+      try {
+        fs.unlinkSync(entry)
+        pruned++
+      } catch {
+        /* best effort */
+      }
+    }
+  }
+  walk(dir)
+  if (pruned > 0) console.log(`[pruneLaunchCache] removed ${pruned} stale entries from ${dir}`)
 }
 
 // -----------------------------------------------------------------------------

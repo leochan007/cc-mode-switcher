@@ -211,3 +211,80 @@ export function buildLaunchScripts(opts: {
   lines.push(`# Available role launchers: ${names}`)
   return lines.join('\n')
 }
+
+/**
+ * UTF-8 safe base64 (btoa alone throws on non-ASCII, e.g. emoji in role labels).
+ * Used to embed scripts inside the launch script without nested-quote escaping.
+ */
+function utf8Base64(s: string): string {
+  const bytes = new TextEncoder().encode(s)
+  let bin = ''
+  for (const b of bytes) bin += String.fromCharCode(b)
+  return btoa(bin)
+}
+
+/**
+ * Shell-ready script for the EXTERNAL terminal. Behaviour mirrors the
+ * internal terminal one-to-one:
+ *   internal: node-pty spawns zsh -l → pty.write sources launch.sh
+ *   external: Terminal.app runs the .command (zsh) → setup writes &
+ *             sources launch.sh, then exec's a new zsh that picks up
+ *             the same launch.sh via a transient ZDOTDIR hook.
+ *
+ * Why ZDOTDIR and not `#!/bin/zsh -i`: macOS Launch Services invokes
+ * `.command` files via `zsh <file>`, which is NON-interactive — after
+ * the script runs, zsh exits and Terminal.app shows "[Process completed]".
+ * The shebang `-i` flag is NOT reliably passed through Launch Services,
+ * so we exec a fresh zsh at the end and use a minimal ZDOTDIR hook
+ * (a single .zshrc that sources launch.sh + restores ZDOTDIR) to seed
+ * the new shell with the cc-<role>() functions. The user's dotfiles
+ * are never touched; ZDOTDIR is restored inside .zshrc before it returns.
+ */
+export function buildExternalSessionScript(opts: {
+  entries: LaunchScriptEntry[]
+  cwd: string
+}): string {
+  const bootstrap = buildLaunchScripts({
+    entries: opts.entries,
+    description: 'cc-mode-switcher · all roles'
+  })
+  const cache = `$HOME/.cc-mode-switcher/.launch-cache`
+  const zdot = `${cache}/zdot`
+  const names = opts.entries.map((e) => `cc-${e.role.id.toLowerCase()}`).join(', ')
+
+  // zdot/.zshrc — the only piece that survives the exec. Sources the same
+  // launch.sh and restores ZDOTDIR so the user's normal shell environment
+  // is unaffected after this script's session.
+  const zshrc = [
+    `# cc-mode-switcher transient zdot hook (rev8: minimal)`,
+    `source "${cache}/launch.sh"`,
+    `if [ -n "\${ZDOTDIR_BACKUP:-}" ]; then`,
+    `  export ZDOTDIR="$ZDOTDIR_BACKUP"`,
+    `else`,
+    `  unset ZDOTDIR`,
+    `fi`,
+    `unset ZDOTDIR_BACKUP`
+  ].join('\n')
+
+  return [
+    `# cc-mode-switcher · external session bootstrap (rev8)`,
+    `# launch.sh → ${cache}/launch.sh (visible for review)`,
+    `cd ${sq(opts.cwd)}`,
+    `mkdir -p "${cache}" "${zdot}"`,
+    `# Write launch.sh (the same file internal pty sources).`,
+    `printf '%s' '${utf8Base64(bootstrap)}' | base64 -d > "${cache}/launch.sh"`,
+    `chmod +x "${cache}/launch.sh"`,
+    `# Write the transient zdot hook.`,
+    `printf '%s' '${sqShellSafe(zshrc)}' > "${zdot}/.zshrc"`,
+    `# Backup + set ZDOTDIR, then exec a fresh zsh which will pick up the`,
+    `# hook and source launch.sh (defining cc-<role>()). The hook restores`,
+    `# ZDOTDIR on its way out so the user's environment stays clean.`,
+    `export ZDOTDIR_BACKUP="\${ZDOTDIR:-}"`,
+    `export ZDOTDIR="${zdot}"`,
+    `echo ""`,
+    `echo "✓ launch.sh:  ${cache}/launch.sh"`,
+    `echo "✓ available:  ${names}"`,
+    `echo "Run any cc-<role> to launch Claude with that role's model."`,
+    `exec /bin/zsh`
+  ].join('\n')
+}
