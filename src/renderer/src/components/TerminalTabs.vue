@@ -39,7 +39,6 @@
     <Teleport to="body">
       <div v-if="ctxMenu.open" class="ctx-menu" :style="{ top: ctxMenu.y + 'px', left: ctxMenu.x + 'px' }" @click.stop>
         <button @click="emit('clone-tab', ctxMenu.tabId); closeCtx()">{{ t('terminal.clone') }}</button>
-        <button @click="emit('detach-tab', ctxMenu.tabId); closeCtx()">{{ t('terminal.detach') }}</button>
         <button class="danger" @click="closeTab(ctxMenu.tabId); closeCtx()">{{ t('terminal.close') }}</button>
       </div>
     </Teleport>
@@ -61,7 +60,6 @@ const emit = defineEmits<{
   (e: 'focus', tabId: string): void
   (e: 'close', tabId: string): void
   (e: 'clone-tab', tabId: string): void
-  (e: 'detach-tab', tabId: string): void
 }>()
 
 const { t } = useI18n()
@@ -75,6 +73,7 @@ function closeTab(id: string): void {
 
 interface CtxMenu { open: boolean; x: number; y: number; tabId: string }
 const ctxMenu = ref<CtxMenu>({ open: false, x: 0, y: 0, tabId: '' })
+
 function onContext(ev: MouseEvent, id: string): void {
   ctxMenu.value = { open: true, x: ev.clientX, y: ev.clientY, tabId: id }
 }

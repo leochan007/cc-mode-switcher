@@ -95,11 +95,9 @@ function claudeArgs(role: RoleConfig, systemPromptContent: string): string[] {
   const args: string[] = []
   args.push(`--setting-sources ${sq('')}`) // disable default settings sources
   args.push(`--settings ${dqArg('$CC_MS_SETTINGS_FILE')}`)
-  // claude doesn't accept --system-prompt-file; inline the content instead.
   if (systemPromptContent.trim()) {
     args.push(`--system-prompt '${sqShellSafe(systemPromptContent)}'`)
   }
-  // No --disallowed-plugins flag in claude; system prompt handles superpowers.
   if (role.allowedTools.length) {
     args.push(`--allowedTools ${role.allowedTools.join(',')}`)
   }
@@ -109,48 +107,107 @@ function claudeArgs(role: RoleConfig, systemPromptContent: string): string[] {
   return args
 }
 
-export interface LaunchScriptOptions {
+/**
+ * One entry in the bootstrap script — corresponds to a bound role + its model.
+ * Each entry becomes one shell function `cc-<roleId>` plus the env vars it
+ * needs, so the user can switch between roles without re-sourcing.
+ */
+export interface LaunchScriptEntry {
   role: RoleConfig
-  /** Null when the role is unbound — script still emits, but without env exports */
-  model: ModelConfig | null
+  model: ModelConfig
   systemPromptContent: string
-  description?: string
 }
 
 /**
- * Build a self-contained shell script that:
- *   - exports the model env vars (or omits them if the role is unbound)
- *   - writes the settings JSON via `printf` (no heredoc — heredocs occasionally
- *     fail to close in interactive zsh and trap users at `heredoc>`)
- *   - defines a shell function `cc-<roleId>` that invokes claude with the
- *     role's flags. The user runs the function name in their terminal.
- *
- * No `exec claude` — the script never takes over the shell. After sourcing
- * it, the user just types `cc-plan` (or whatever the role id is) to launch.
- *
- * When `model` is null, the function body uses whatever ANTHROPIC_* env vars
- * happen to be in scope; the env exports step is replaced with a comment.
+ * Backwards-compatible single-role entry point. Internally delegates to
+ * `buildLaunchScript` with a one-element `entries` array.
  */
-export function buildLaunchScript(opts: LaunchScriptOptions): string {
-  const { role, model, systemPromptContent } = opts
-  const json = settingsJsonFor(model, role.thinking)
-  const shellSafe = json.replace(/'/g, `'\\''`)
-  const desc = opts.description ?? `cc-mode-switcher · ${role.id}`
-  const fnName = `cc-${role.id.toLowerCase()}`
-  const argsLine = claudeArgs(role, systemPromptContent).join(' ')
-  return [
-    `# ${desc}`,
-    ...(model ? envExports(model, role.thinking) : ['# (role unbound — no model env exports)']),
-    '',
-    `# Per-role settings file (priority > ~/.claude/settings.json).`,
-    `# Written via printf to avoid interactive-zsh heredoc edge cases.`,
-    `CC_MS_SETTINGS_FILE="$HOME/.cc-mode-switcher/.launch-cache/${role.id}.json"`,
-    `mkdir -p "$(dirname "$CC_MS_SETTINGS_FILE")"`,
-    `printf '%s' '${shellSafe}' > "$CC_MS_SETTINGS_FILE"`,
-    '',
-    `# Type \`${fnName}\` to launch Claude with this role's config.`,
-    `${fnName}() {`,
-    `  exec claude ${argsLine}`,
-    `}`
-  ].join('\n')
+export function buildLaunchScript(opts: {
+  role: RoleConfig
+  model: ModelConfig | null
+  systemPromptContent: string
+  description?: string
+}): string {
+  if (!opts.model) {
+    // No model bound — emit a minimal script that just defines an empty
+    // (no-op) cc-<id> function so the user can re-source later once a
+    // model is bound.
+    const fnName = `cc-${opts.role.id.toLowerCase()}`
+    return [
+      `# cc-mode-switcher · ${opts.role.id} (unbound)`,
+      `# (role unbound — no model env exports, ${fnName} is a no-op)`,
+      '',
+      `${fnName}() {`,
+      `  echo "${fnName}: role '${opts.role.id}' has no model. Bind one in the role table."`,
+      `}`
+    ].join('\n')
+  }
+  return buildLaunchScripts({
+    entries: [
+      {
+        role: opts.role,
+        model: opts.model,
+        systemPromptContent: opts.systemPromptContent
+      }
+    ],
+    description: opts.description
+  })
+}
+
+/**
+ * Build a single self-contained shell script that wires up ONE shell function
+ * per bound role. Each function re-exports its own ANTHROPIC_* env vars
+ * before exec'ing claude, so the user can call any role function from the
+ * same shell without re-sourcing.
+ *
+ * Example with two roles:
+ *   cc-plan()  { export ANTHROPIC_BASE_URL="..." ...; exec claude ... }
+ *   cc-worker(){ export ANTHROPIC_BASE_URL="..." ...; exec claude ... }
+ *
+ * The settings file path is derived from the role id; each role writes its
+ * own `~/.cc-mode-switcher/.launch-cache/<RoleId>.json`.
+ *
+ * Unbound roles (no model) are silently skipped — caller should filter them.
+ */
+export function buildLaunchScripts(opts: {
+  entries: LaunchScriptEntry[]
+  description?: string
+}): string {
+  const lines: string[] = []
+  const desc = opts.description ?? 'cc-mode-switcher bootstrap'
+  lines.push(`# ${desc}`)
+
+  // Per-role: settings file + claude flags.
+  for (const entry of opts.entries) {
+    const { role, model, systemPromptContent } = entry
+    const json = settingsJsonFor(model, role.thinking)
+    const shellSafe = json.replace(/'/g, `'\\''`)
+    const settingsPath = `$HOME/.cc-mode-switcher/.launch-cache/${role.id}.json`
+    lines.push(`# ── ${role.label} (${role.id}) ──`)
+    lines.push(`CC_MS_SETTINGS_FILE_${role.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}="${settingsPath}"`)
+    lines.push(`mkdir -p "$(dirname "${settingsPath}")"`)
+    lines.push(`printf '%s' '${shellSafe}' > "${settingsPath}"`)
+    lines.push('')
+  }
+
+  // Per-role: cc-<id>() function. Each function re-exports its env then execs.
+  for (const entry of opts.entries) {
+    const { role, model, systemPromptContent } = entry
+    const fnName = `cc-${role.id.toLowerCase()}`
+    const settingsVar = `CC_MS_SETTINGS_FILE_${role.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`
+    const envLines = envExports(model, role.thinking).map((l) => '  ' + l)
+    const argsLine = claudeArgs(role, systemPromptContent)
+      .map((a) => a.replace(/\$CC_MS_SETTINGS_FILE/g, `$${settingsVar}`))
+      .join(' ')
+    lines.push(`${fnName}() {`)
+    lines.push(...envLines)
+    lines.push(`  exec claude ${argsLine}`)
+    lines.push(`}`)
+    lines.push('')
+  }
+
+  // Echo a friendly reminder of what's available
+  const names = opts.entries.map((e) => `cc-${e.role.id.toLowerCase()}`).join(', ')
+  lines.push(`# Available role launchers: ${names}`)
+  return lines.join('\n')
 }

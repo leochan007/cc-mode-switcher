@@ -1,106 +1,100 @@
 <template>
   <div id="app">
-    <!-- Detached windows get a stripped-down shell: just one terminal pane. -->
-    <DetachedShell v-if="isDetached" :session-id="detachedSessionId" :label="detachedLabel" :cwd="detachedCwd" />
+    <AppHeader v-model="activeTab" />
 
-    <template v-else>
-      <AppHeader v-model="activeTab" />
+    <main class="content">
+      <!-- Switcher tab: workspace layout (left pane = roles, right pane = terminals) -->
+      <div v-if="activeTab === 'switcher'" class="switcher-pane">
+        <div class="workspace">
+          <section class="left-pane">
+            <RolesTable
+              :roles="roles"
+              :models="models"
+              :selected-id="selectedRoleId"
+              :view="view"
+              @select="onSelectRole"
+              @patch="onPatchRole"
+              @reorder="onReorderRole"
+              @edit="onEditRole"
+              @delete="onDeleteRole"
+              @change-view="view = $event"
+              @add-role="onAddRole"
+              @open-models="activeTab = 'models'"
+            />
 
-      <main class="content">
-        <!-- Switcher tab: workspace layout (left pane = roles, right pane = terminals) -->
-        <div v-if="activeTab === 'switcher'" class="switcher-pane">
-          <div class="workspace">
-            <section class="left-pane">
-              <RolesTable
-                :roles="roles"
-                :models="models"
-                :selected-id="selectedRoleId"
-                :view="view"
-                @select="onSelectRole"
-                @patch="onPatchRole"
-                @reorder="onReorderRole"
-                @edit="onEditRole"
-                @delete="onDeleteRole"
-                @change-view="view = $event"
-                @add-role="onAddRole"
-                @open-models="activeTab = 'models'"
-              />
+            <RoleDetailPanel
+              v-if="view === 'table'"
+              :role="selectedRole"
+              :model="selectedModel"
+              :cwd="cwd || '~'"
+              @open-window="onOpenInExternalTerminal"
+              @open-shell="onOpenShell"
+            />
 
-              <RoleDetailPanel
-                v-if="view === 'table'"
-                :role="selectedRole"
-                :model="selectedModel"
-                :cwd="cwd || '~'"
-                @open-window="onOpenInExternalTerminal"
-                @open-shell="onOpenShell"
-              />
+            <RolesYamlEditor
+              v-else
+              :initial="rolesYamlRaw"
+              @saved="onYamlSaved"
+            />
+          </section>
 
-              <RolesYamlEditor
-                v-else
-                :initial="rolesYamlRaw"
-                @saved="onYamlSaved"
-              />
-            </section>
-
-            <section class="right-pane">
-              <TerminalTabs
-                :tabs="tabs"
-                :active-tab-id="activeTabId"
-                @focus="focusTab"
-                @close="closeTab"
-                @clone-tab="onCloneTab"
-                @detach-tab="onDetachTab"
-              />
-            </section>
-          </div>
+          <section class="right-pane">
+            <TerminalTabs
+              :tabs="tabs"
+              :active-tab-id="activeTabId"
+              @focus="focusTab"
+              @close="closeTab"
+              @clone-tab="onCloneTab"
+            />
+          </section>
         </div>
+      </div>
 
-        <!-- Models tab: same UX as v1 (form + card list) -->
-        <ModelsPanel v-else-if="activeTab === 'models'" />
+      <!-- Models tab: same UX as v1 (form + card list) -->
+      <ModelsPanel v-else-if="activeTab === 'models'" />
 
-        <!-- Settings tab: theme + language + reset roles -->
-        <SettingsPanel v-else @reset-roles="onResetRoles" />
-      </main>
+      <!-- Settings tab: theme + language + reset roles -->
+      <SettingsPanel v-else @reset-roles="onResetRoles" />
+    </main>
 
-      <!-- Modals (Switcher-only) -->
-      <RoleEditModal
-        v-if="editingRole && editingRoleId"
-        :role="editingRole"
-        :models="models"
-        @close="editingRoleId = null"
-        @save="onSaveRoleEdit"
-      />
+    <!-- Modals (Switcher-only) -->
+    <RoleEditModal
+      v-if="editingRole && editingRoleId"
+      :role="editingRole"
+      :models="models"
+      @close="editingRoleId = null"
+      @save="onSaveRoleEdit"
+    />
 
-      <RolePickerModal
-        v-if="pickerOpen"
-        :roles="roles"
-        :models="models"
-        @select="onPickerSelect"
-        @cancel="pickerOpen = false"
-      />
+    <RolePickerModal
+      v-if="pickerOpen"
+      :roles="roles"
+      :models="models"
+      @select="onPickerSelect"
+      @cancel="pickerOpen = false"
+    />
 
-      <ConfirmModal
-        v-if="resetConfirm"
-        :title="t('confirm.resetTitle')"
-        :message="t('confirm.resetMessage')"
-        :confirm-text="t('confirm.reset')"
-        danger
-        @confirm="doResetRoles"
-        @cancel="resetConfirm = false"
-      />
+    <ConfirmModal
+      v-if="resetConfirm"
+      :title="t('confirm.resetTitle')"
+      :message="t('confirm.resetMessage')"
+      :confirm-text="t('confirm.reset')"
+      danger
+      @confirm="doResetRoles"
+      @cancel="resetConfirm = false"
+    />
 
-      <ConfirmModal
-        v-if="deletingRole && deletingRoleFor"
-        :title="t('confirm.deleteRoleTitle')"
-        :message="t('confirm.deleteRoleMessage', { id: deletingRoleFor.id })"
-        :confirm-text="t('confirm.delete')"
-        danger
-        @confirm="confirmDeleteRole"
-        @cancel="deletingRole = null"
-      />
+    <ConfirmModal
+      v-if="deletingRole && deletingRoleFor"
+      :title="t('confirm.deleteRoleTitle')"
+      :message="t('confirm.deleteRoleMessage', { id: deletingRoleFor.id })"
+      :confirm-text="t('confirm.delete')"
+      danger
+      @confirm="confirmDeleteRole"
+      @cancel="deletingRole = null"
+    />
 
-      <ToastHost />
-    </template>
+    <ToastHost />
   </div>
 </template>
 
@@ -111,6 +105,7 @@ import { useConfig } from './composables/useConfig'
 import { useSessions } from './composables/useSessions'
 import { useI18n } from './composables/useI18n'
 import { useToast } from './composables/useToast'
+import { buildLaunchScript, buildLaunchScripts, LaunchScriptEntry } from './shared/launchCommand'
 
 import AppHeader from './components/AppHeader.vue'
 import RolesTable from './components/RolesTable.vue'
@@ -121,7 +116,6 @@ import RoleEditModal from './components/RoleEditModal.vue'
 import RolePickerModal from './components/RolePickerModal.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
 import ToastHost from './components/ToastHost.vue'
-import DetachedShell from './components/DetachedShell.vue'
 import ModelsPanel from './components/ModelsPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 
@@ -146,17 +140,10 @@ const {
   activeTabId,
   focusTab,
   closeTab,
-  detachTab,
   openShellTab,
   openRoleTab,
   cloneTab
 } = sessions
-
-// ---------- Detached window detection ----------
-const isDetached = ref(false)
-const detachedSessionId = ref<string | null>(null)
-const detachedLabel = ref<string>('')
-const detachedCwd = ref<string>('')
 
 // ---------- Tab + local UI state ----------
 const activeTab = ref<Tab>('switcher')
@@ -197,6 +184,38 @@ function loadCwdHistory(): string[] {
   }
 }
 
+/** Safely quote a path for inclusion in a shell command (single-quote wrap) */
+function shellQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`
+}
+
+/**
+ * Build a bootstrap script that wires up cc-<id>() shell functions for
+ * every bound role. Cached prompt-file reads (keyed by path) so we don't
+ * re-read the same .md multiple times when the user has N roles.
+ */
+const promptCache = new Map<string, string>()
+async function readPromptCached(path: string): Promise<string> {
+  if (promptCache.has(path)) return promptCache.get(path)!
+  const text = await window.electronAPI.readTextFile(path)
+  promptCache.set(path, text)
+  return text
+}
+
+async function buildMultiRoleBootstrap(): Promise<string | null> {
+  const bound = roles.value.filter((r) => r.model)
+  if (bound.length === 0) return null
+  const entries: LaunchScriptEntry[] = []
+  for (const role of bound) {
+    const model = models.value.find((m) => m.id === role.model)
+    if (!model) continue
+    const prompt = role.systemPrompt ? await readPromptCached(role.systemPrompt) : ''
+    entries.push({ role, model, systemPromptContent: prompt })
+  }
+  if (entries.length === 0) return null
+  return buildLaunchScripts({ entries, description: 'cc-mode-switcher · all roles' })
+}
+
 function pushCwd(dir: string): void {
   if (!dir) return
   const next = [dir, ...cwdHistory.value.filter((d) => d !== dir)].slice(0, 10)
@@ -206,6 +225,8 @@ function pushCwd(dir: string): void {
   } catch {
     /* best effort */
   }
+  // Sync the menu's Open Recent submenu
+  window.electronAPI.setRecentCwds(next).catch(() => undefined)
 }
 
 /**
@@ -221,22 +242,33 @@ async function resolveCwdForNewShell(explicit?: string): Promise<string> {
 }
 
 onMounted(async () => {
-  const info = await window.electronAPI.isDetachedWindow()
-  if (info.detached) {
-    isDetached.value = true
-    detachedSessionId.value = info.sessionId
-    detachedLabel.value = info.label ?? ''
-    detachedCwd.value = info.cwd ?? ''
-    return
-  }
-
   await load()
   rolesYamlRaw.value = await readRolesYaml()
 
   // Wire native menu commands
-  window.electronAPI.onMenuCommand((cmd) => {
-    if (cmd === 'menu:new-shell') onMenuNewShell()
-    else if (cmd === 'menu:new-shell-with-role') onMenuNewShellWithRole()
+  window.electronAPI.onMenuCommand((cmd, payload) => {
+    switch (cmd) {
+      case 'menu:new-session-internal':
+        onMenuNewShellInternal().catch(() => undefined)
+        break
+      case 'menu:new-session-external':
+        onMenuNewShellExternal().catch(() => undefined)
+        break
+      case 'menu:new-session-with-role-internal':
+        onMenuNewShellWithRoleInternal().catch(() => undefined)
+        break
+      case 'menu:new-session-with-role-external':
+        onMenuNewShellWithRoleExternal().catch(() => undefined)
+        break
+      case 'menu:open-folder':
+        onMenuOpenFolder().catch(() => undefined)
+        break
+      case 'menu:open-recent-path':
+        if (typeof payload === 'string') {
+          onMenuOpenRecentPath(payload)
+        }
+        break
+    }
   })
 })
 
@@ -360,21 +392,135 @@ async function onLaunchRoleFromDetail(roleId: string): Promise<void> {
 }
 
 // ---------- Native menu handlers ----------
-async function onMenuNewShell(): Promise<void> {
+/** Open internal xterm in current cwd (no role) */
+async function onMenuNewShellInternal(): Promise<void> {
   await onStartSelected()
 }
 
-function onMenuNewShellWithRole(): void {
+/** Open external Terminal.app in current cwd (no role) */
+async function onMenuNewShellExternal(): Promise<void> {
+  const cwd = await resolveCwdForNewShell()
+  if (!cwd) return
+  await launchExternalPlainShell(cwd)
+}
+
+/** Internal terminal — pick a role, source its launch script */
+async function onMenuNewShellWithRoleInternal(): Promise<void> {
+  // If exactly one role is bound, just use it; otherwise prompt.
+  const bound = roles.value.filter((r) => r.model)
+  if (bound.length === 1) {
+    await launchInternalWithRole(bound[0].id)
+    return
+  }
+  if (bound.length === 0) {
+    toast.info(t('toast.noBoundRole'))
+    return
+  }
   pickerOpen.value = true
+}
+
+/** External terminal — pick a role, run its launch script in Terminal.app */
+async function onMenuNewShellWithRoleExternal(): Promise<void> {
+  const bound = roles.value.filter((r) => r.model)
+  if (bound.length === 1) {
+    await launchExternalWithRole(bound[0].id)
+    return
+  }
+  if (bound.length === 0) {
+    toast.info(t('toast.noBoundRole'))
+    return
+  }
+  pickerOpen.value = true
+}
+
+/** Folder picker → opens that dir in internal terminal (with multi-role bootstrap) */
+async function onMenuOpenFolder(): Promise<void> {
+  const picked = await window.electronAPI.selectDirectory()
+  if (!picked) return
+  cwd.value = picked
+  pushCwd(picked)
+  const bootstrap = await buildMultiRoleBootstrap()
+  await openShellTab({ cwd: picked, bootstrap: bootstrap ?? undefined })
+}
+
+/** Open a path from the Open Recent submenu (with multi-role bootstrap) */
+async function onMenuOpenRecentPath(path: string): Promise<void> {
+  if (!path) return
+  cwd.value = path
+  pushCwd(path)
+  const bootstrap = await buildMultiRoleBootstrap()
+  await openShellTab({ cwd: path, bootstrap: bootstrap ?? undefined })
+}
+
+/** Open an external Terminal.app plain shell at `cwd` (no role script) */
+async function launchExternalPlainShell(cwd: string): Promise<void> {
+  const command = `cd ${shellQuote(cwd)} && clear`
+  const ok = await window.electronAPI.launchTerminal({
+    terminalPath: localStorage.getItem('cc_terminal') ?? '',
+    command
+  })
+  if (!ok.ok && ok.error !== 'cancelled') {
+    toast.error(t('toast.launchFail', { error: ok.error ?? '' }))
+  }
+}
+
+/** Run the role's launch script in external Terminal.app */
+async function launchExternalWithRole(roleId: string): Promise<void> {
+  const role = roles.value.find((r) => r.id === roleId)
+  const model = role?.model ? models.value.find((m) => m.id === role.model) : null
+  if (!role || !model) {
+    toast.error(t('toast.noModel'))
+    return
+  }
+  const cwd = await resolveCwdForNewShell()
+  if (!cwd) return
+  const prompt = role.systemPrompt
+    ? await window.electronAPI.readTextFile(role.systemPrompt)
+    : ''
+  const script = buildLaunchScript({ role, model, systemPromptContent: prompt })
+  const ok = await window.electronAPI.launchTerminal({
+    terminalPath: localStorage.getItem('cc_terminal') ?? '',
+    command: script
+  })
+  if (!ok.ok && ok.error !== 'cancelled') {
+    toast.error(t('toast.launchFail', { error: ok.error ?? '' }))
+  }
+  pushCwd(cwd)
+}
+
+/** Open internal terminal and source the role's launch script */
+async function launchInternalWithRole(roleId: string): Promise<void> {
+  const role = roles.value.find((r) => r.id === roleId)
+  if (!role) {
+    toast.error(t('toast.noRole'))
+    return
+  }
+  if (!role.model) {
+    toast.error(t('toast.noModel'))
+    return
+  }
+  const model = models.value.find((m) => m.id === role.model)
+  if (!model) {
+    toast.error(t('toast.noModel'))
+    return
+  }
+  const cwd = await resolveCwdForNewShell()
+  if (!cwd) return
+  const prompt = role.systemPrompt
+    ? await window.electronAPI.readTextFile(role.systemPrompt)
+    : ''
+  const script = buildLaunchScript({ role, model, systemPromptContent: prompt })
+  const tabId = await openShellTab({ cwd, bootstrap: script, color: role.color })
+  if (!tabId) {
+    toast.error(t('toast.tabOpenFail'))
+    return
+  }
+  pushCwd(cwd)
 }
 
 async function onCloneTab(tabId: string): Promise<void> {
   const id = await cloneTab(tabId)
   if (!id) toast.error(t('toast.tabOpenFail'))
-}
-
-function onDetachTab(tabId: string): void {
-  detachTab(tabId)
 }
 
 async function onOpenInExternalTerminal(payload: { roleId: string; command: string }): Promise<void> {

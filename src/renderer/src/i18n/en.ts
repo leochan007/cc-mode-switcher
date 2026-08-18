@@ -80,9 +80,7 @@ export default {
     emptyTitle: 'No active sessions',
     emptyHint: 'Click ▶ Start Selected Role, press Cmd+N (or Option+T) to launch.',
     close: 'Close tab',
-    clone: 'Clone tab',
-    detach: 'Detach to window',
-    attach: 'Merge into main window'
+    clone: 'Clone tab'
   },
   roleEdit: {
     title: 'Edit role "{name}"',
@@ -123,7 +121,8 @@ export default {
     unreachable: '🔴 {name} · unreachable ({error})',
     testFailed: '🔴 {name} · test failed',
     scriptCopied: '📋 Launch script copied — paste into Terminal',
-    copyFail: '🔴 Copy failed'
+    copyFail: '🔴 Copy failed',
+    noBoundRole: '💡 Bind a model to a role first'
   },
   models: {
     title: 'Configured Models',

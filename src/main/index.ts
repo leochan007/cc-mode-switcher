@@ -21,30 +21,16 @@ import {
   resizeSession,
   killSession,
   listSessions,
-  getSession,
   replayBuffer,
-  setOwner,
   SessionMeta,
   DEFAULT_CWD
 } from './pty'
 
 let mainWindow: BrowserWindow | null = null
-const detachedWindows = new Map<number, BrowserWindow>() // webContents id -> window
 
 // -----------------------------------------------------------------------------
 // Window helpers
 // -----------------------------------------------------------------------------
-
-function getCwdFromHash(hash: string): string {
-  // detach=abc&cwd=... or detach=abc
-  const params = new URLSearchParams(hash.replace(/^#/, ''))
-  return params.get('cwd') ?? DEFAULT_CWD
-}
-
-function getSessionIdFromHash(hash: string): string | null {
-  const params = new URLSearchParams(hash.replace(/^/, ''))
-  return params.get('detach')
-}
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -81,44 +67,6 @@ function createMainWindow(): BrowserWindow {
   return win
 }
 
-function createDetachedWindow(sessionId: string, label: string, cwd: string): BrowserWindow {
-  const win = new BrowserWindow({
-    width: 900,
-    height: 600,
-    minWidth: 600,
-    minHeight: 400,
-    title: label,
-    titleBarStyle: 'hiddenInset',
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  })
-
-  const baseUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:5173'
-    : `file://${path.join(__dirname, '../renderer/index.html')}`
-
-  const url = `${baseUrl}#detach=${encodeURIComponent(sessionId)}&label=${encodeURIComponent(label)}&cwd=${encodeURIComponent(cwd)}`
-
-  if (process.env.NODE_ENV === 'development') {
-    win.loadURL(url)
-  } else {
-    win.loadURL(url)
-  }
-
-  const wcId = win.webContents.id
-  detachedWindows.set(wcId, win)
-  setOwner(sessionId, wcId)
-
-  win.on('closed', () => {
-    detachedWindows.delete(wcId)
-  })
-
-  return win
-}
-
 // -----------------------------------------------------------------------------
 // App lifecycle
 // -----------------------------------------------------------------------------
@@ -142,10 +90,70 @@ app.on('window-all-closed', () => {
 
 // -----------------------------------------------------------------------------
 // Application menu (Shell + Help). The renderer listens for `menu:*` events.
+// Recent cwd history is pushed from the renderer whenever it changes; we
+// rebuild the menu so the Open Recent submenu reflects the latest list.
 // -----------------------------------------------------------------------------
+
+let recentCwds: string[] = []
+
+function sendMenuCommand(channel: string, ...args: unknown[]): void {
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (!w.isDestroyed()) w.webContents.send(channel, ...args)
+  }
+}
 
 function buildAppMenu(): void {
   const isMac = process.platform === 'darwin'
+  const recentSubmenu: Electron.MenuItemConstructorOptions[] =
+    recentCwds.length === 0
+      ? [{ label: '(no recent folders)', enabled: false }]
+      : recentCwds.map((p) => ({
+          label: shortenPathForMenu(p),
+          toolTip: p,
+          click: () => sendMenuCommand('menu:open-recent-path', p)
+        }))
+
+  const shellSubmenu: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'New Session',
+      submenu: [
+        {
+          label: 'Internal Terminal',
+          accelerator: isMac ? 'Cmd+T' : 'Ctrl+T',
+          click: () => sendMenuCommand('menu:new-session-internal')
+        },
+        {
+          label: 'External Terminal',
+          click: () => sendMenuCommand('menu:new-session-external')
+        }
+      ]
+    },
+    {
+      label: 'New Session With Role',
+      submenu: [
+        {
+          label: 'Internal Terminal',
+          accelerator: isMac ? 'Cmd+N' : 'Ctrl+N',
+          click: () => sendMenuCommand('menu:new-session-with-role-internal')
+        },
+        {
+          label: 'External Terminal',
+          click: () => sendMenuCommand('menu:new-session-with-role-external')
+        }
+      ]
+    },
+    { type: 'separator' },
+    {
+      label: 'Open Folder…',
+      accelerator: isMac ? 'Cmd+O' : 'Ctrl+O',
+      click: () => sendMenuCommand('menu:open-folder')
+    },
+    {
+      label: 'Open Recent',
+      submenu: recentSubmenu
+    }
+  ]
+
   const template: Electron.MenuItemConstructorOptions[] = [
     // App menu (macOS only — auto-injects Quit / Hide)
     ...(isMac
@@ -153,18 +161,7 @@ function buildAppMenu(): void {
       : []),
     {
       label: 'Shell',
-      submenu: [
-        {
-          label: 'New Shell',
-          accelerator: isMac ? 'Cmd+T' : 'Ctrl+T',
-          click: () => sendMenuCommand('menu:new-shell')
-        },
-        {
-          label: 'New Shell with Role…',
-          accelerator: isMac ? 'Cmd+N' : 'Ctrl+N',
-          click: () => sendMenuCommand('menu:new-shell-with-role')
-        }
-      ]
+      submenu: shellSubmenu
     },
     {
       label: 'Help',
@@ -179,11 +176,19 @@ function buildAppMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-function sendMenuCommand(channel: string): void {
-  for (const w of BrowserWindow.getAllWindows()) {
-    if (!w.isDestroyed()) w.webContents.send(channel)
-  }
+/** Collapse $HOME to ~ for the menu label; keep the full path as toolTip */
+function shortenPathForMenu(p: string): string {
+  const home = app.getPath('home')
+  if (p === home) return '~'
+  if (p.startsWith(home + '/')) return '~' + p.slice(home.length)
+  return p
 }
+
+ipcMain.handle('set-recent-cwds', async (_event, paths: string[]) => {
+  recentCwds = Array.isArray(paths) ? paths.slice(0, 10).map(String) : []
+  buildAppMenu()
+  return true
+})
 
 buildAppMenu()
 
@@ -386,42 +391,4 @@ ipcMain.handle('session:list', async (): Promise<SessionMeta[]> => listSessions(
 
 ipcMain.handle('session:replay', async (_event, payload: { id: string }): Promise<string | null> => {
   return replayBuffer(payload.id)
-})
-
-ipcMain.handle(
-  'session:detach',
-  async (_event, payload: { id: string; label: string; cwd: string }): Promise<{ ok: boolean; error?: string }> => {
-    const entry = getSession(payload.id)
-    if (!entry) return { ok: false, error: 'session not found' }
-    try {
-      createDetachedWindow(payload.id, payload.label, payload.cwd)
-      return { ok: true }
-    } catch (err: any) {
-      return { ok: false, error: err?.message ?? String(err) }
-    }
-  }
-)
-
-ipcMain.handle(
-  'session:attach',
-  async (event, payload: { id: string }): Promise<boolean> => {
-    return setOwner(payload.id, ownerIdFor(event))
-  }
-)
-
-ipcMain.handle('app:is-detached', async (event): Promise<{ detached: boolean; sessionId: string | null; label: string | null; cwd: string | null }> => {
-  const url = event.sender.getURL()
-  // for file:// the hash is in the fragment of the URL
-  const hashIndex = url.indexOf('#')
-  if (hashIndex === -1) return { detached: false, sessionId: null, label: null, cwd: null }
-  const hash = url.slice(hashIndex)
-  const params = new URLSearchParams(hash.replace(/^/, ''))
-  const sessionId = params.get('detach')
-  if (!sessionId) return { detached: false, sessionId: null, label: null, cwd: null }
-  return {
-    detached: true,
-    sessionId,
-    label: params.get('label'),
-    cwd: params.get('cwd')
-  }
 })

@@ -95,7 +95,7 @@ async function load(): Promise<void> {
   loaded.value = true
 }
 
-// keep local refs in sync if any other window (e.g. detached) mutates the bundle
+// keep local refs in sync if any other window mutates the bundle
 watch(loaded, async (v) => {
   if (!v) return
   // nothing — initial load is enough

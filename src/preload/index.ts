@@ -57,7 +57,28 @@ export interface ElectronAPI {
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 
   // Menu commands from the native menu
-  onMenuCommand: (cb: (cmd: 'menu:new-shell' | 'menu:new-shell-with-role') => void) => () => void
+  setRecentCwds: (paths: string[]) => Promise<boolean>
+
+  // Menu commands from the native menu
+  onMenuCommand: (cb: (cmd: MenuCommand, payload?: unknown) => void) => () => void
+}
+
+export type MenuCommand =
+  | 'menu:new-session-internal'
+  | 'menu:new-session-external'
+  | 'menu:new-session-with-role-internal'
+  | 'menu:new-session-with-role-external'
+  | 'menu:open-folder'
+  | 'menu:open-recent-path'
+
+export interface ElectronAPI {
+  copyToClipboard: (text: string) => Promise<boolean>
+  testConnection: (url: string) => Promise<ConnectionTestResult>
+  selectTerminal: () => Promise<string | null>
+  selectPromptFile: () => Promise<string | null>
+  selectDirectory: () => Promise<string | null>
+  readTextFile: (path: string) => Promise<string>
+  launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 
   // Config
   loadConfig: () => Promise<ConfigBundleDTO>
@@ -84,9 +105,6 @@ export interface ElectronAPI {
   killSession: (id: string) => Promise<boolean>
   listSessions: () => Promise<SessionMetaDTO[]>
   replaySession: (id: string) => Promise<string | null>
-  detachSession: (id: string, label: string, cwd: string) => Promise<{ ok: boolean; error?: string }>
-  attachSession: (id: string) => Promise<boolean>
-  isDetachedWindow: () => Promise<{ detached: boolean; sessionId: string | null; label: string | null; cwd: string | null }>
 
   // Subscriptions (returns an unsubscribe fn)
   onSessionData: (cb: (payload: { id: string; data: string }) => void) => () => void
@@ -113,15 +131,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   launchTerminal: (payload) => ipcRenderer.invoke('launch-terminal', payload),
 
   onMenuCommand: (cb) => {
-    const newShell = () => cb('menu:new-shell')
-    const newShellRole = () => cb('menu:new-shell-with-role')
-    ipcRenderer.on('menu:new-shell', newShell)
-    ipcRenderer.on('menu:new-shell-with-role', newShellRole)
+    const channels: MenuCommand[] = [
+      'menu:new-session-internal',
+      'menu:new-session-external',
+      'menu:new-session-with-role-internal',
+      'menu:new-session-with-role-external',
+      'menu:open-folder',
+      'menu:open-recent-path'
+    ]
+    const handler = (_: unknown, payload?: unknown) => {
+      // Forward whichever channel the IPC event came in on
+      cb(_.channel?.replace('ipc:', '') as MenuCommand, payload)
+    }
+    // Each IPC channel delivers a generic event with the channel name in sender
+    // — instead we listen per-channel and call cb with the channel name.
+    const listeners: Array<[string, (...args: unknown[]) => void]> = []
+    for (const ch of channels) {
+      const l = (_e: unknown, payload?: unknown) => cb(ch, payload)
+      ipcRenderer.on(ch, l)
+      listeners.push([ch, l])
+    }
     return () => {
-      ipcRenderer.removeListener('menu:new-shell', newShell)
-      ipcRenderer.removeListener('menu:new-shell-with-role', newShellRole)
+      for (const [ch, l] of listeners) ipcRenderer.removeListener(ch, l)
     }
   },
+  setRecentCwds: (paths) => ipcRenderer.invoke('set-recent-cwds', paths),
 
   loadConfig: () => ipcRenderer.invoke('config:load'),
   saveModels: (models) => ipcRenderer.invoke('config:save-models', models),
@@ -137,9 +171,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   killSession: (id) => ipcRenderer.invoke('session:kill', { id }),
   listSessions: () => ipcRenderer.invoke('session:list'),
   replaySession: (id) => ipcRenderer.invoke('session:replay', { id }),
-  detachSession: (id, label, cwd) => ipcRenderer.invoke('session:detach', { id, label, cwd }),
-  attachSession: (id) => ipcRenderer.invoke('session:attach', { id }),
-  isDetachedWindow: () => ipcRenderer.invoke('app:is-detached'),
 
   onSessionData: (cb) => {
     const listener = (_: unknown, payload: { id: string; data: string }) => cb(payload)

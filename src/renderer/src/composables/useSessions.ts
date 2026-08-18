@@ -1,7 +1,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { SessionMeta } from '../types'
 import { useConfig } from './useConfig'
-import { buildLaunchScript, settingsJsonFor } from '../shared/launchCommand'
+import { buildLaunchScript, buildLaunchScripts, settingsJsonFor, LaunchScriptEntry } from '../shared/launchCommand'
 
 // -----------------------------------------------------------------------------
 // Tab state (renderer side). The actual pty lives in the main process; tabs
@@ -93,20 +93,6 @@ export function useSessions() {
 
   function killSession(sessionId: string): void {
     window.electronAPI.killSession(sessionId).catch(() => undefined)
-  }
-
-  function detachTab(id: string): void {
-    const t = tabs.value.find((x) => x.id === id)
-    if (!t || !t.sessionId) return
-    const sessionId = t.sessionId
-    window.electronAPI
-      .detachSession(sessionId, t.title, t.cwd)
-      .then((r) => {
-        if (r.ok) {
-          closeTab(id)
-        }
-      })
-      .catch(() => undefined)
   }
 
   /**
@@ -236,7 +222,6 @@ export function useSessions() {
     focusTab,
     closeTab,
     killSession,
-    detachTab,
     openShellTab,
     openRoleTab,
     cloneTab,

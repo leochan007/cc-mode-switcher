@@ -80,9 +80,7 @@ export default {
     emptyTitle: '当前没有会话',
     emptyHint: '点 ▶ 启动选中角色，或按 Cmd+N（或 Option+T）启动。',
     close: '关闭 Tab',
-    clone: '克隆 Tab',
-    detach: '分离为窗口',
-    attach: '合并回主窗口'
+    clone: '克隆 Tab'
   },
   roleEdit: {
     title: '编辑角色 "{name}"',
@@ -123,7 +121,8 @@ export default {
     unreachable: '🔴 {name} · 无法连接（{error}）',
     testFailed: '🔴 {name} · 测试失败',
     scriptCopied: '📋 启动脚本已复制 —— 粘贴到 Terminal',
-    copyFail: '🔴 复制失败'
+    copyFail: '🔴 复制失败',
+    noBoundRole: '💡 请先给角色绑定模型'
   },
   models: {
     title: '已配置的模型',
