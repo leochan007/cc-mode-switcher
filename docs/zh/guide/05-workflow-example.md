@@ -1,110 +1,148 @@
 # 05 · 端到端示例 —— 从需求到交付
 
-场景：为 cc-mode-switcher 增加**模型配置导出/导入**功能。完整走一遍 Plan → 人工审批 → Work 的全过程。
+一个功能,从头到尾走一遍:用户需求 → `cc-plan` 会话 → 人审 → `cc-worker` 会话 → 交付,加上过程中用到的 Tab / Detach / Clone 快捷键。
 
-## Step 0 · 准备
+## 场景
 
-| 终端 | 模式 | 绑定模型（示例） |
+给 CC Mode Switcher 加**角色配置导出 / 导入**功能 —— 一个按钮把当前 `roles.yaml` + `models.yaml`(密钥脱敏)合并导出为一份 JSON,另一个按钮导入同样 JSON,覆盖前先问确认。
+
+## 第 0 步 · 工作台就绪
+
+1. 打开项目目录:Toolbar 的 **📂** → 选你的 `cc-mode-switcher/` checkout。(被记住,下次自动。)
+2. 切到 **Switcher** Tab。你应该在角色表格里看到 `Plan` 和 `Worker`,每个都绑了模型。
+
+## 第 1 步 · Plan 会话 —— 写 `plan_output.md`
+
+### 1.1 开 Plan Tab
+
+- 点 `Plan` 行选中。
+- 点 toolbar 的 **▶ 启动选中角色**。
+
+右栏新开一个**内部 xterm Tab**。bootstrap 自动 source;看到 `✓ available: cc-plan` 横幅。
+
+### 1.2 敲 `cc-plan`
+
+shell 函数跑起来,export env,`exec` claude。几秒后你在 Claude Code REPL 里,Plan prompt 已生效。
+
+### 1.3 发规划 prompt
+
+输入(或粘贴):
+
+```text
+You are this project's architect, in Plan mode. Your only output is a plan
+document — do not write implementation code.
+
+Requirement: add Export / Import for role configurations. The user wants to
+share a role setup with a teammate (or back it up before editing), without
+leaking API keys.
+
+Constraints:
+- Export = both ~/.cc-mode-switcher/models.yaml and ~/.cc-mode-switcher/roles.yaml
+  combined into a single JSON file.
+- API keys in models.yaml must be redacted in the export.
+- Import = read the JSON, show a diff against the current state, ask for
+  confirmation before overwriting any role / model.
+- The UI goes in the Settings panel.
+
+First read the relevant code ( src/..., configs, package.json ), then write
+the plan to .cc-delivery/plan_output.md using this project's standard plan
+template (background / current state / approach incl. rejected alternatives /
+task breakdown with files / out of scope / acceptance criteria / risks).
+Anything uncertain becomes an OPEN QUESTION — don't guess.
+```
+
+Plan 会话读代码,需要的话问你澄清,最后写 `.cc-delivery/plan_output.md`,以 `PLAN_READY: please launch the Worker role on this plan.` 结尾。
+
+### 1.4 人审
+
+在编辑器里打开 `.cc-delivery/plan_output.md`(或另一个终端 `cat`)。检查:
+
+- 任务拆解合理吗?文件清单准确吗?
+- `OPEN QUESTION` 合理吗?挨个做决定。
+- `Out of scope` 是不是你真想推迟的?
+- `Acceptance criteria` 可测吗?
+
+OK:把 `Status:` 行翻成 `approved`。不行:在 Plan 会话里发追问,它保持 `draft` 直到你批。
+
+## 第 2 步 · 克隆 Plan Tab 留作对照
+
+你想在 Worker 跑的时候留 Plan Tab 不关,方便对照。**克隆**它:
+
+- 把焦点切到 Plan Tab(在 xterm 里点一下)。
+- 按 **`Cmd+T`** → 新开 Tab,同样的 cwd、同样的角色、同样的快照设置。现在你有两个 Plan Tab。
+
+> `Cmd+T` 克隆的是**当前** Tab,复用快照的 cwd / 角色 / 设置。之后改角色配置不影响已克隆的 —— 它们在创建那一刻就冻结了。
+
+关掉原 Plan Tab(右键 → Close,或 ✕)。现在你留一个 Plan Tab,plan 文件在另一个终端打开。
+
+## 第 3 步 · 分离窗口
+
+右键 Plan Tab → **Detach**。Tab 分离成独立 BrowserWindow,标题 `cc-mode-switcher | 🧠 Plan(GLM-5.3)`。可以拖到第二屏、随便调大小;detach 后到达的输出从 ring buffer 重放。
+
+## 第 4 步 · Worker 会话 —— 实现
+
+### 4.1 开 Worker Tab
+
+- 在角色表格里点 `Worker` 行。
+- 按 **`Cmd+N`** → 角色选择器 → 选 `Worker`(或 `Option+T` 如果 `Worker` 已选)。
+
+新内部 xterm Tab,Worker bootstrap。敲 `cc-worker`。
+
+### 4.2 Worker 读 plan,开干
+
+Worker prompt 强制:
+
+1. **读 `.cc-delivery/plan_output.md`** —— 不存在就 `NO_PLAN:` 退出。
+3. 逐项实现。
+4. 追加里程碑到 `.cc-delivery/worker_report.md`。
+5. 末尾 `WORK_DONE:`。
+
+不用盯着 —— 四层隔离保证它改不了 plan 文件、开不了 Superpowers、它被允许的工具只限于 plan 涉及的范围。
+
+### 4.3 中途缺口
+
+Worker 撞上 plan 里的一个 `OPEN QUESTION`(比如"脱敏格式:`***` vs `<REDACTED>` vs 完全省略?")。它:
+
+1. 停当前任务。
+2. 追加到 `.cc-delivery/worker_report.md`:
+   ```
+   ## Open question
+
+   T2(脱敏):plan 问 export 时 apiKey 怎么脱敏。建议 `***REDACTED***`(匹配同类工具的惯例)。等拍板。
+   ```
+3. 在聊天里告诉你。
+4. 等。
+
+你回复:"用 `***REDACTED***`,继续。" Worker 接着干。
+
+## 第 5 步 · 验收
+
+Worker 说 `WORK_DONE: all plan items implemented.` 你验收:
+
+- Settings → Export / Import 出现新按钮。
+- Export → 生成 JSON,每个模型的 `apiKey` 是 `***REDACTED***`。
+- Import → 拿队友的 export 进来 → 显示 diff,覆盖前弹确认。
+- 取消 import 后原有角色 / 模型完好。
+
+## 第 6 步 · 收尾
+
+- 关 Worker Tab(右键 → Close)。
+- 分离的 Plan Tab 留着参考 —— 啥时候关都行。
+- `~/.cc-delivery/plan_output.md` 和 `worker_report.md` 留在磁盘上,作为本次交付的审计轨迹。
+
+## 使用的快捷键
+
+| 快捷键 | 时机 | 作用 |
 | --- | --- | --- |
-| 终端 A | PLAN | glm-5.3（推理） |
-| 终端 B | WORK | MiniMax-M3（执行） |
+| `▶ 启动选中角色` | toolbar | 用左栏选中角色启动 |
+| `Option+T` | 工作区任意位置 | 同上 —— 用选中角色新开内部 Tab |
+| `Cmd+T` | xterm 焦点 | 克隆当前 Tab(同 cwd + 角色快照) |
+| `Cmd+N` | xterm 焦点 | 开角色选择器 |
+| 右键 Tab → Detach | Tab UI | 把 Tab 弹成独立窗口 |
+| `⚙️ 设置 → 重置角色` | settings | 恢复默认 Plan + Worker(保留模型 + 提示词文件) |
 
-终端 A 输 `cc-p`、终端 B 输 `cc-w`（应用为每个模式生成的 alias，详见 [02 章](02-models-and-providers.md)）。两个 session 互不干扰，可同时开着。
+## 变体
 
-## Step 1 · Plan 会话（终端 A）
-
-开场提示词（来自 [03 章](03-plan-mode-playbook.md)）：
-
-```text
-你是本项目的架构师，现在是 Plan 模式，唯一产出是 plan 文档，不要写实现代码。
-
-需求：支持把已配置的模型列表导出为文件、再从文件导入（方便换机/备份）。
-注意 API Key 是敏感信息，方案里必须考虑。
-
-请阅读 src/renderer/src/composables/useModels.ts 和相关组件后，
-按标准结构输出 plan 文档到 docs/plans/001-export-import-models.md …
-```
-
-Plan 模式产出的文档（节选）：
-
-```markdown
-# Plan: 模型配置导出/导入
-
-- 状态: draft
-- 作者: leochan007 (glm-5.3) @ 2026-08-16
-
-## 1. 背景与目标
-换机/备份时需要迁移模型配置；目标：一键导出 JSON 文件、一键导入并合并。
-
-## 3. 方案
-导出：Models 面板新增导出按钮，经 IPC 由主进程写文件（renderer 无 fs 权限），
-文件内容 = JSON.stringify(models)，API Key 默认打码，可选"包含密钥"。
-被否方案：直接用 localStorage 文件拷贝——依赖浏览器存储路径，不可移植。
-
-## 4. 任务拆解
-- [ ] T1: useModels 增加 exportModels(includeSecrets) / importModels(json) — src/renderer/src/composables/useModels.ts
-- [ ] T2: IPC export-models / import-models（dialog.showSaveDialog/showOpenDialog + fs）— src/main/index.ts, src/preload/index.ts
-- [ ] T3: Models 面板导出/导入按钮 + 导入冲突合并策略（按 id 覆盖，新增追加）— src/renderer/src/components/ModelsPanel.vue
-- [ ] T4: 中英文 i18n 文案 — src/renderer/src/i18n/{en,zh}.ts
-
-## 5. 明确不做的事
-不做加密导出、不做自动云同步、不做选择性勾选导出。
-
-## 6. 验收标准
-- [ ] 导出的 JSON 可在全新 localStorage 导入后完整还原列表
-- [ ] 默认导出不包含明文 API Key
-- [ ] 导入重复 id 的模型时旧配置被更新而非重复插入
-```
-
-## Step 2 · 人工审批（关键，别跳过）
-
-读一遍文档，重点检查：
-- 任务粒度是否可独立验证（T2 太大？拆成 save/open 两个？）
-- Out of Scope 是否符合预期
-- 有无 OPEN QUESTION
-
-确认后把 `- 状态: draft` 改为 `approved`。
-
-## Step 3 · Work 会话（终端 B）
-
-开场提示词（来自 [04 章](04-work-mode-playbook.md)）：
-
-```text
-你是本项目的执行工程师，现在是 Work 模式。
-严格按 docs/plans/001-export-import-models.md（状态: approved）执行。
-铁律：只做任务清单里的事；不新增任务不改方案；发现 plan 缺口立即停止并报告，
-绝不现场自行设计；每完成一个任务勾选文档对应项；最后逐条核对验收标准。
-现在从 T1 开始。
-```
-
-执行过程示例：
-
-```
-Work: T1 完成 → 勾选 [x] T1
-Work: T2 完成导出 IPC → 发现导入需要"合并策略"细节，但 plan T3 已写明（按 id 覆盖）→ 继续
-Work: T3 完成 → [x] T3
-Work: T4 完成 → [x] T4
-Work: 核对验收标准：3/3 通过 → 汇报，文档状态改为 done
-```
-
-对比：如果没有 plan 文档，Work 模型大概率会"顺手"加上导出加密、勾选式导出、甚至自动同步——恰好全是本例 Out of Scope 明确排除的东西。
-
-## Step 4 · 收尾
-
-- Work 汇报验收结果，人抽查关键路径（导出→清空→导入→测试连接）
-- plan 文档状态 → `done`，作为项目决策记录留档
-- 代码提交（commit message 可引用 plan：`implements docs/plans/001-…`）
-
-## 全流程时间线
-
-```
-需求 ──▶ Plan 终端：生成 plan ──▶ 人工 review/approve ──▶ Work 终端：按清单执行
-                                                                   │
-              ┌──────────── 发现缺口：停下报告 ◀────────────────────┤
-              ▼                                                    │
-        Plan 终端：修订 plan ──▶ re-approve ─────────────────────────┤
-                                                                   ▼
-                                            验收通过 ──▶ done ──▶ 提交
-```
-
-成本结构：深度思考只发生在 Plan（贵模型），机械执行全部在 Work（便宜模型）——这就是双模式分工的全部意义。
+- **外部终端**:同样的流程,但用启动面板里的 `▶ Open in Terminal` 开 Terminal.app 而不是内部 Tab。`cc-<角色>` alias 行为一致。
+- **多个并行 Worker**:开任意多 Worker Tab —— 它们看同一份 `plan_output.md`,每个各追加 `worker_report.md` 自己的 header。不要让它们同时动重叠的文件。
+- **自定义角色**:加 `test-runner` 角色(只读 + Bash + 限定测试路径)、`security-audit` 角色(只读 + Grep + Glob)等。每个就是表格里的又一行。

@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: 'CC Mode Switcher',
-  description: 'Claude Code Plan / Work dual-mode environment switcher',
+  description: 'Multi-role switcher for Claude Code — any number of roles, isolated sessions, no-touch on ~/.claude/settings.json or ~/.zshrc',
 
   // Project page lives at https://<owner>.github.io/<repo>/, so all generated
   // absolute URLs (/, /zh/, /guide/, /zh/guide/) get prefixed with this base.
@@ -29,7 +29,7 @@ export default defineConfig({
           { text: 'Download', link: '/download' },
           { text: 'Index', link: '/' },
           { text: 'Guide', link: '/guide/00-introduction' },
-          { text: 'Playbooks', link: '/guide/03-plan-mode-playbook' },
+          { text: 'Roles Playbook', link: '/guide/03-roles-playbook' },
           { text: 'Example', link: '/guide/05-workflow-example' }
         ],
         sidebar: {
@@ -54,8 +54,8 @@ export default defineConfig({
             {
               text: 'Playbooks',
               items: [
-                { text: '03 · Plan Mode Playbook', link: '/guide/03-plan-mode-playbook' },
-                { text: '04 · Work Mode Playbook', link: '/guide/04-work-mode-playbook' },
+                { text: '03 · Roles Playbook', link: '/guide/03-roles-playbook' },
+                { text: '04 · Worker Role Playbook', link: '/guide/04-worker-mode-playbook' },
                 { text: '05 · End-to-End Example', link: '/guide/05-workflow-example' }
               ]
             },
@@ -88,8 +88,8 @@ export default defineConfig({
             {
               text: 'Playbooks',
               items: [
-                { text: '03 · Plan Mode Playbook', link: '/guide/03-plan-mode-playbook' },
-                { text: '04 · Work Mode Playbook', link: '/guide/04-work-mode-playbook' },
+                { text: '03 · Roles Playbook', link: '/guide/03-roles-playbook' },
+                { text: '04 · Worker Role Playbook', link: '/guide/04-worker-mode-playbook' },
                 { text: '05 · End-to-End Example', link: '/guide/05-workflow-example' }
               ]
             },
@@ -112,7 +112,7 @@ export default defineConfig({
           { text: '下载', link: '/zh/download' },
           { text: '文档索引', link: '/zh/' },
           { text: '使用指南', link: '/zh/guide/00-introduction' },
-          { text: '实战案例', link: '/zh/guide/03-plan-mode-playbook' }
+          { text: '角色 Playbook', link: '/zh/guide/03-roles-playbook' }
         ],
         sidebar: {
           '/zh/': [
@@ -136,8 +136,8 @@ export default defineConfig({
             {
               text: '实战案例',
               items: [
-                { text: '03 · Plan 模式实战', link: '/zh/guide/03-plan-mode-playbook' },
-                { text: '04 · Work 模式实战', link: '/zh/guide/04-work-mode-playbook' },
+                { text: '03 · 角色 Playbook', link: '/zh/guide/03-roles-playbook' },
+                { text: '04 · Worker 角色 Playbook', link: '/zh/guide/04-worker-mode-playbook' },
                 { text: '05 · 端到端示例', link: '/zh/guide/05-workflow-example' }
               ]
             },
@@ -169,8 +169,8 @@ export default defineConfig({
             {
               text: '实战案例',
               items: [
-                { text: '03 · Plan 模式实战', link: '/zh/guide/03-plan-mode-playbook' },
-                { text: '04 · Work 模式实战', link: '/zh/guide/04-work-mode-playbook' },
+                { text: '03 · 角色 Playbook', link: '/zh/guide/03-roles-playbook' },
+                { text: '04 · Worker 角色 Playbook', link: '/zh/guide/04-worker-mode-playbook' },
                 { text: '05 · 端到端示例', link: '/zh/guide/05-workflow-example' }
               ]
             },

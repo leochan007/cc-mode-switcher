@@ -10,26 +10,29 @@ macOS / Windows / Linux 安装包发布在 **[GitHub Releases → 最新版](htt
 
 | 章节 | 内容 | 适合谁 |
 | --- | --- | --- |
-| [00 · 产品介绍](/zh/guide/00-introduction) | 它是什么、解决什么问题、设计理念、功能总览 | 所有人 —— 从这里开始 |
-| [01 · 快速上手](/zh/guide/01-getting-started) | 安装后 5 分钟完成首次配置并启动第一次会话 | 新用户 |
-| [02 · 模型与 Provider 配置](/zh/guide/02-models-and-providers) | 预设、自动补全、连接测试、环境变量清单、覆盖防护 | 所有用户 |
-| [03 · Plan 模式实战](/zh/guide/03-plan-mode-playbook) | 用 Plan 模式生成 plan 文档（中间产物），不动代码 | 核心工作流 |
-| [04 · Work 模式实战](/zh/guide/04-work-mode-playbook) | 严格按 plan 文档执行，**绝不另起 plan** | 核心工作流 |
-| [05 · 端到端示例](/zh/guide/05-workflow-example) | 一个完整功能从 Plan 到 Work 落地的全过程 | 想看真实用法的人 |
+| [00 · 产品介绍](/zh/guide/00-introduction) | 多角色切换器定位、解决什么问题、设计理念(角色一等公民 / 物理隔离 / `.cc-delivery` 契约)、功能总览 | 所有人 —— 从这里开始 |
+| [01 · 快速上手](/zh/guide/01-getting-started) | 工作台布局、5 步首次配置(模型/角色/终端/启动) | 新用户 |
+| [02 · 模型与 Provider 配置](/zh/guide/02-models-and-providers) | `~/.cc-mode-switcher/models.yaml` + `roles.yaml` 格式、Provider 预设、连接测试、`--setting-sources ""` 覆盖防护 | 所有用户 |
+| [03 · 角色 Playbook](/zh/guide/03-roles-playbook) | 设计你的角色阵容:四层隔离、`OPEN QUESTION` 纪律、`.cc-delivery` 契约、`cc-<角色>` alias | 核心工作流 |
+| [04 · Worker 角色 Playbook](/zh/guide/04-worker-mode-playbook) | 严格按 `plan_output.md` 执行、中途缺口的处理、中途续接 | 核心工作流 |
+| [05 · 端到端示例](/zh/guide/05-workflow-example) | 一个完整功能从需求 → Plan → 人工审批 → Worker → 交付 + 快捷键演示 | 想看真实用法的人 |
 | [06 · 本地构建](/zh/guide/06-local-build) | 清除 node_modules、pnpm store、electron / electron-builder 缓存后重新安装 | `pnpm run dev` 或 `pnpm run dist` 出问题时 |
-| [07 · 发布与版本管理](/zh/guide/07-release-versioning) | GitHub Actions 工作流：云端构建、升级 / 降级、发布 GitHub Release —— 全手动，零本地命令 | 维护者 |
+| [07 · 发布与版本管理](/zh/guide/07-release-versioning) | GitHub Actions 工作流:云端构建、升级 / 降级、发布 GitHub Release —— 全手动,零本地命令 | 维护者 |
 
 ## 核心理念
 
 ```
-        ┌──────────────┐   plan 文档    ┌──────────────┐
-需求 ──▶│  Plan 模式   │ ────────────▶ │  Work 模式   │ ──▶ 交付
-        │ （推理模型）  │  （唯一事实源） │ （执行模型）  │
-        └──────────────┘               └──────────────┘
-              ▲                               │
-              └──── plan 有缺口时回来修订 ──────┘
+                ┌──────────────┐  plan_output.md  ┌──────────────┐
+   需求 ────▶   │  Plan 角色   │ ───────────────▶ │ Worker 角色  │ ──▶ 交付
+                │ (推理,只读) │  (.cc-delivery/    │ (执行,      │
+                │              │   单一事实源)      │  写+测试)   │
+                └──────────────┘                   └──────────────┘
+                      ▲                                  │
+                      └──── 发现 plan 缺口回来修订 ──────┘
 ```
 
-- **严格分工**：Plan 模式负责思考与设计（产出 plan 文档），Work 模式负责实现（消费 plan 文档）。两者绝不混用。
-- **plan 文档是唯一事实来源**：Work 模式发现 plan 有问题时不许现场发挥，必须停下来回到 Plan 模式修订。
-- **人是审批者**：plan 文档生成后由你 review，通过后才交给 Work 模式执行。
+- **角色一等公民**:不是 Plan/Work 二选一,而是任意多角色(出厂预置 Plan + Worker,你可任意增删改),每个有自己的模型、提示词、thinking、工具黑白名单。
+- **一个会话 = 一个角色**:会话创建时把角色参数快照进 pty,改配置不影响已开 Tab。
+- **`.cc-delivery/plan_output.md` 是跨角色边界的唯一事实源**:Plan 写、Worker 读;没有 IPC,没有共享上下文,只是一个磁盘文件。
+- **人是审批者**:plan 文档生成后由你 review,通过后才交给 Worker 执行。
+- **对你的环境零侵入**:`~/.claude/settings.json` 不碰、`~/.zshrc` 不碰,所有配置在 `~/.cc-mode-switcher/` 下。
