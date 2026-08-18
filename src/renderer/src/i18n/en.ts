@@ -1,7 +1,7 @@
 export default {
   app: {
     title: 'CC Mode Switcher',
-    subtitle: 'Multi-role scheduler for Claude Code'
+    subtitle: 'Multi-role switcher for Claude Code'
   },
   tabs: {
     models: 'Models',

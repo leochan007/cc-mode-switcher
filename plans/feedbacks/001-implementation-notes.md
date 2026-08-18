@@ -1,10 +1,10 @@
-# Implementation feedback — 001-multi-role-scheduler
+# Implementation feedback — 001-multi-role-switcher
 
 Status: notes from initial implementation, **plan not modified**.
 
 ## Completed
 
-All 17 tasks from `plans/001-multi-role-scheduler.md` are implemented and the
+All 17 tasks from `plans/001-multi-role-switcher.md` are implemented and the
 `pnpm build` + `vue-tsc` pipelines are clean.
 
 ## Minor notes (no action requested)

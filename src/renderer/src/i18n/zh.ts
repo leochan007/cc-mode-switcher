@@ -1,7 +1,7 @@
 export default {
   app: {
     title: 'CC Mode Switcher',
-    subtitle: 'Claude Code 多角色调度器'
+    subtitle: 'Claude Code 多角色切换器'
   },
   tabs: {
     models: '模型',
