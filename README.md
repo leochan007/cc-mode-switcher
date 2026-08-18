@@ -2,9 +2,9 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Plan / Work dual-mode environment switcher for [Claude Code](https://claude.com/product/claude-code). Bind a different model to each mode — e.g. a reasoning model for **Plan** (architecture / design / review) and a fast model for **Work** (implementation / debugging) — then launch Claude Code in the right mode with one click.
+Multi-role scheduler for [Claude Code](https://claude.com/product/claude-code). Define any number of roles (default: 🧠 **Planner** + ⚙️ **Worker**), bind a different model to each — e.g. a reasoning model for planning and a fast model for execution — then launch Claude Code in the right role from a built-in multi-tab terminal (xterm.js + node-pty) or your favourite external terminal. Tab = one role, one pty session, one tool allow / deny list.
 
-Built with Electron + Vue 3 + TypeScript.
+Built with Electron + Vue 3 + TypeScript. Disk-backed YAML configuration (no localStorage for the things that matter).
 
 ## Design Philosophy
 
@@ -16,7 +16,6 @@ This tool can't be that smart. It draws the simplest possible line — **plan vs
 
 ### 🤖 Model Management
 - Add / edit / duplicate / delete model configs (display name, base URL, API key, model ID)
-- **Drag-and-drop reordering** with a grip handle and drop-position indicator
 - **Provider presets** with URL autocomplete — GLM (Zhipu), MiniMax, DeepSeek, Kimi (Moonshot), Z.ai, Qwen (DashScope)
 - Type a name or model ID (`glm-5.3`, `MiniMax-M3`, …) and the base URL auto-fills
 - Quick-pick model ID chips once a provider is matched
@@ -24,22 +23,32 @@ This tool can't be that smart. It draws the simplest possible line — **plan vs
 
 ![Model management](docs/public/images/model_config.png)
 
-### 🔄 Plan / Work Switcher
-- Bind one model per mode; duplicates land right below the original (`X copy`, `X copy (1)`, …)
-- Delete requires confirmation via modal dialog
-- Generates a ready-to-paste shell snippet for the selected mode
+### 🎭 Multi-role Scheduler (Rancher-for-roles)
+- Any number of roles, defined in `~/.cc-mode-switcher/roles.yaml` — no hard-coded list of roles in the app
+- Each role picks: a model, an extended-thinking toggle, a system-prompt file path, allowed tools, denied tools, and denied plugins
+- Default roles are **🧠 Planner** (read-only) and **⚙️ Worker** (writes files) — built-in prompts at `~/.cc-mode-switcher/prompts/{plan,worker}.md` define the `.cc-delivery/` file contract between roles
+- **Table view** for clicks: filter, inline cell edits, right-click to duplicate / delete
+- **YAML view** for power users: live syntax check, dirty-state indicator, save reloads the table
+- Two-way same source: editing the table writes YAML; editing YAML and saving refreshes the table
+- **Reset** restores the default plan + worker roles but keeps your models and any edits you made to the prompt files
 
 ![Plan/Work switcher](docs/public/images/switcher_main.png)
 
-### ▶️ Open in Terminal
-- First use: pick your terminal app (Terminal.app, iTerm, or any other — falls back to a generated `.command` file)
-- Opens a new terminal window with the alias for the **currently selected mode** defined for that session only — nothing is written to `~/.zshrc`
-- Type `cc-p` to launch Claude Code in Plan mode, `cc-w` for Work mode; a ready hint is echoed
+### ⌨️ Built-in Multi-tab Terminal
+- xterm.js + node-pty in the main process — each tab is one pty session, bound to one role + one model
+- **Tab title**: `{project} | {roleLabel}({modelName})` (e.g. `acme-web | 🧠 Planner(glm-5.3)`)
+- Right-click a tab to **clone** (reuse the same role + cwd) or **detach** to a separate window
+- Mac shortcuts (active only when the terminal pane has focus):
+  - **Cmd+T** — clone the focused tab
+  - **Cmd+N** — open the role picker and start a new session
+  - **Option+T** — start the role currently selected on the left
+- Detached window exposes a single "↩ merge into main" button that transfers the session back
+- Per-session snapshot: changing role bindings afterwards does **not** affect already-open tabs
 
 ### 🚫 Zero-touch on Claude Code settings
-Claude Code's `~/.claude/settings.json` `env` block would otherwise override terminal env vars. We sidestep it with two flags per alias:
+Claude Code's `~/.claude/settings.json` `env` block would otherwise override terminal env vars. We sidestep it with two flags per session:
 - `--setting-sources ""` — Claude Code skips **all** default settings files (user / project / local)
-- `--settings "$CC_MODE_DIR/<ModelName>.json"` — loads the per-mode temp JSON (named after the bound model) at **highest priority**, overriding everything
+- `--settings "$CC_MODE_DIR/<ModelName>.json"` — loads the per-session temp JSON (named after the bound model) at **highest priority**, overriding everything
 - The app **never reads or writes** `~/.claude/settings.json` or any settings file — no backups, no surprises
 
 ### 📦 Release & Versioning (GitHub Actions, manual)
@@ -53,20 +62,20 @@ Releases are driven by **three manual workflows** — no automatic triggers, no 
 Full operational guide: [Release & Versioning Workflow](docs/guide/07-release-versioning.md).
 
 ### ⚙️ Settings & Polish
-- 🌙 Dark (default) / ☀️ Light theme — CSS-variable based, toggle in the header or Settings
-- English (default) / 简体中文 — quick toggle in the header or Settings
+- 🌙 Dark (default) / ☀️ Light theme — CSS-variable based, toggle in the toolbar
+- English (default) / 简体中文 — quick toggle in the toolbar
 - Icon-only action buttons with hover tooltips
 - Centered toast notifications
-- Everything persists in `localStorage`
+- Models + role config persists in `~/.cc-mode-switcher/*.yaml`; UI preferences (theme, language) in `localStorage`
 
 ![Settings](docs/public/images/system_settings.png)
 
-## Generated Aliases
+## Generated Launch Scripts
 
-The snippet shown in the textarea — and the one sent to a new terminal — always reflects the **currently selected mode card** (Plan or Work). Example with Plan selected, bound to GLM-5.3:
+The detail panel below the role table shows the full shell snippet for the selected role — same content the built-in terminal runs and same what the "open in external terminal" button sends. Example, plan role bound to GLM-5.3:
 
 ```bash
-# Plan: extended thinking + plan permission mode
+# cc-mode-switcher · plan
 export ANTHROPIC_BASE_URL="https://open.bigmodel.cn/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="sk-..."
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.3"
@@ -81,33 +90,24 @@ export ANTHROPIC_MODEL="glm-5.3"
 export CLAUDE_CODE_SUBAGENT_MODEL="glm-5.3"
 export MAX_THINKING_TOKENS=16000
 
-# Per-mode temp settings file (highest priority via --settings).
-# Filename = bound model's display name → easy to find in $CC_MODE_DIR.
+# Per-role temp settings file (priority > ~/.claude/settings.json)
 CC_MODE_DIR=$(mktemp -d -t cc-mode-XXXXXX)
 
 cat > "$CC_MODE_DIR/GLM-5.3.json" <<'CCMODE_EOF'
 {
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "sk-...",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.3",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.3",
-    "ANTHROPIC_DEFAULT_FABLE_MODEL": "glm-5.3",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME": "glm-5.3",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": "glm-5.3",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME": "glm-5.3",
-    "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME": "glm-5.3",
-    "ANTHROPIC_MODEL": "glm-5.3",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "glm-5.3",
-    "MAX_THINKING_TOKENS": "16000"
-  }
+  "env": { ... same 13 keys as above ... }
 }
 CCMODE_EOF
 
-# Aliases — --setting-sources "" disables default sources; --settings loads the temp file at highest priority
-alias cc-p='claude --permission-mode plan --setting-sources "" --settings "$CC_MODE_DIR/GLM-5.3.json"'
+# Launch claude with role-scoped prompt + tool permissions
+exec claude --setting-sources '' --settings "$CC_MODE_DIR/GLM-5.3.json" \
+            --system-prompt-file ~/.cc-mode-switcher/prompts/plan.md \
+            --disallowed-plugins 'superpowers' \
+            --allowedTools Read,LS,Glob,Grep \
+            --disallowedTools Edit,Write,NotebookEdit,Bash
 ```
+
+`superpowers` is always forced into `--disallowed-plugins` regardless of role config, and every session uses `--setting-sources ""` so `~/.claude/settings.json` is never read.
 
 Selecting the Work card instead regenerates the same block with Work's bindings — `MAX_THINKING_TOKENS` line is omitted, the temp file becomes e.g. `$CC_MODE_DIR/MiniMax-M3.json`, and the alias is `cc-w='claude --setting-sources "" --settings "$CC_MODE_DIR/MiniMax-M3.json"'`. Switch cards any time and click ▶️ again to open a fresh terminal in the new mode.
 

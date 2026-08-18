@@ -2,9 +2,9 @@
 
 [English](README.md) | **简体中文**
 
-[Claude Code](https://claude.com/product/claude-code) 的 Plan / Work 双模式环境切换器。给两种模式分别绑定不同的模型 —— 例如 **Plan**（架构 / 设计 / 评审）用推理模型、**Work**（实现 / 调试）用快速模型 —— 一键以正确的模式启动 Claude Code。
+[Claude Code](https://claude.com/product/claude-code) 的多角色调度器。任意定义多个角色（默认：🧠 **Planner** + ⚙️ **Worker**），分别绑定不同模型 —— 例如 Plan 用推理模型、执行用快速模型 —— 在内置的多 Tab 终端（xterm.js + node-pty）或你常用的外部终端中一键以正确的角色启动 Claude Code。Tab = 一个角色、一个 pty 会话、一份工具允许/禁止清单。
 
-基于 Electron + Vue 3 + TypeScript 构建。
+基于 Electron + Vue 3 + TypeScript 构建。关键配置落盘为 `~/.cc-mode-switcher/*.yaml`，可手编、可 diff。
 
 ## 设计初衷
 
@@ -16,7 +16,6 @@
 
 ### 🤖 模型管理
 - 新增 / 编辑 / 复制 / 删除模型配置（显示名称、Base URL、API Key、模型 ID）
-- **拖拽排序**（把手拖动，带上/下落点指示线）
 - **Provider 预设** + URL 自动补全 —— 智谱 GLM、MiniMax、DeepSeek、Kimi（月之暗面）、Z.ai、通义千问（DashScope）
 - 输入名称或模型 ID（`glm-5.3`、`MiniMax-M3`……）自动填入 Base URL
 - 匹配到 Provider 后显示模型 ID 快捷 chips
@@ -24,20 +23,30 @@
 
 ![模型管理](docs/public/images/model_config.png)
 
-### 🔄 Plan / Work 切换器
-- 两种模式各绑定一个模型；复制生成的配置紧跟原条目下方（`X copy`、`X copy (1)`……）
-- 删除需经 Modal 对话框二次确认
-- 按当前模式生成可直接粘贴的 shell 片段
+### 🎭 多角色调度器（Rancher-for-roles）
+- 任意数量的角色，定义在 `~/.cc-mode-switcher/roles.yaml` —— 应用本身不硬编码角色清单
+- 每个角色可绑定：模型、扩展思考开关、系统提示词文件路径、允许/禁止工具、禁止插件
+- 默认角色 **🧠 Planner**（只读） + **⚙️ Worker**（写文件）；内置提示词在 `~/.cc-mode-switcher/prompts/{plan,worker}.md`，定义了角色之间的 `.cc-delivery/` 文件契约
+- **表格视图** 适合鼠标操作：过滤、单元格直接编辑、右键复制/删除
+- **YAML 视图** 适合进阶用户：实时语法校验、未保存提示、保存后表格自动刷新
+- 表格 ↔ YAML 双向同源：表格编辑写入 YAML；YAML 保存后表格自动刷新
+- **重置**恢复默认的 plan + worker，但保留你配置过的模型与改过的提示词文件
 
 ![Plan/Work 切换器](docs/public/images/switcher_main.png)
 
-### ▶️ 在终端中打开
-- 首次使用：通过文件选择器选择终端应用（Terminal.app、iTerm 或其他 —— 通用回退为生成 `.command` 文件）
-- 打开新的终端窗口，并在该 session 内临时定义**当前选中模式**的 alias —— **不会写入 `~/.zshrc`**
-- Plan 模式输入 `cc-p`、Work 模式输入 `cc-w`；echo 就绪提示
+### ⌨️ 内置多 Tab 终端
+- 主进程 xterm.js + node-pty —— 每个 Tab = 一个 pty 会话，绑定到一个角色 + 一个模型
+- **Tab 标题**：`{项目目录名} | {角色标签}({模型名称})`（例如 `acme-web | 🧠 Planner(glm-5.3)`）
+- 右键 Tab 可 **克隆**（复用角色 + cwd）或 **分离** 到独立窗口
+- Mac 快捷键（仅终端获得焦点时生效）：
+  - **Cmd+T** —— 克隆当前 Tab
+  - **Cmd+N** —— 打开角色选择器新建会话
+  - **Option+T** —— 启动左侧表格中当前选中的角色
+- 分离窗口提供"↩ 合并回主窗口"按钮，把会话交还主窗口
+- 会话参数固化：之后修改角色绑定 **不会**影响已经打开的 Tab
 
 ### 🚫 绝不触碰 Claude Code 配置
-Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终端环境变量**。本应用靠每个 alias 上的两个 flag 绕开它：
+Claude Code 的 `~/.claude/settings.json` 中 `env` 块的优先级**高于终端环境变量**。本应用靠每个会话的两个 flag 绕开它：
 - `--setting-sources ""` —— Claude Code **完全跳过**所有默认 settings 文件（user / project / local）
 - `--settings "$CC_MODE_DIR/<ModelName>.json"` —— 以**最高优先级**加载该模型绑定的临时 JSON，覆盖一切
 - 本应用**从不读、不写** `~/.claude/settings.json` 或任何 settings 文件 —— 无需备份，不会冲突
@@ -53,11 +62,11 @@ macOS / Windows / Linux 安装包发布在 GitHub Release —— **[点此下载
 完整操作指南：[发布与版本管理](/zh/guide/07-release-versioning)。
 
 ### ⚙️ 设置与细节
-- 🌙 深色（默认）/ ☀️ 浅色主题 —— 基于 CSS 变量，头部或设置页均可切换
-- English（默认）/ 简体中文 —— 头部或设置页快捷切换
+- 🌙 深色（默认）/ ☀️ 浅色主题 —— 基于 CSS 变量，工具栏快捷切换
+- English（默认）/ 简体中文 —— 工具栏快捷切换
 - 图标按钮 + 悬停 tooltip
 - 居中显示的 toast 通知
-- 所有配置持久化到 `localStorage`
+- 模型 + 角色配置持久化在 `~/.cc-mode-switcher/*.yaml`；界面偏好（主题 / 语言）在 `localStorage`
 
 ![设置](docs/public/images/system_settings.png)
 

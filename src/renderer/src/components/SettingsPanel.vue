@@ -47,35 +47,63 @@
       </div>
     </div>
 
+    <div class="card setting-card">
+      <div class="card-title">{{ t('settings.roles') }}</div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">{{ t('settings.resetRoles') }}</div>
+          <div class="setting-hint">{{ t('settings.resetTip') }}</div>
+        </div>
+        <button class="btn-ghost" @click="emit('reset-roles')">♻️ {{ t('settings.resetRoles') }}</button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">{{ t('settings.about') }}</div>
       <div class="setting-row">
         <span class="setting-label">{{ t('settings.version') }}</span>
-        <span class="version">v1.0.0</span>
+        <span class="version">v2.0.0</span>
       </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useTheme } from '../composables/useTheme'
-import { useTerminal } from '../composables/useTerminal'
+
+const emit = defineEmits<{ (e: 'reset-roles'): void }>()
 
 const { locale, t } = useI18n()
 const { theme } = useTheme()
-const { terminalPath, pickTerminal } = useTerminal()
+
+const TERMINAL_KEY = 'cc_terminal'
+const terminalPath = ref<string>(localStorage.getItem(TERMINAL_KEY) ?? '')
+
+watch(terminalPath, (v) => {
+  try {
+    localStorage.setItem(TERMINAL_KEY, v)
+  } catch {
+    /* best effort */
+  }
+})
+
+async function pickTerminal(): Promise<void> {
+  const picked = await window.electronAPI.selectTerminal()
+  if (picked) terminalPath.value = picked
+}
 </script>
 
 <style scoped>
 .setting-card { margin-bottom: 16px; }
-
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .setting-label { font-size: 13px; color: var(--text); }
+.setting-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; max-width: 360px; }
 .version { font-size: 13px; color: var(--text-dim); font-family: monospace; }
 
 .terminal-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

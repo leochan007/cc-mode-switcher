@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+// -----------------------------------------------------------------------------
+// Types — duplicated to keep preload self-contained (no shared TS imports).
+// -----------------------------------------------------------------------------
+
 export interface ConnectionTestResult {
   ok: boolean
   ms: number
@@ -7,11 +11,86 @@ export interface ConnectionTestResult {
   error?: string
 }
 
+export interface ModelConfigDTO {
+  id: string
+  name: string
+  baseUrl: string
+  apiKey: string
+  modelID: string
+}
+
+export interface RoleConfigDTO {
+  id: string
+  label: string
+  model: string
+  thinking: boolean
+  systemPrompt: string
+  disallowedPlugins: string[]
+  allowedTools: string[]
+  disallowedTools: string[]
+  color: string
+}
+
+export interface ConfigBundleDTO {
+  models: ModelConfigDTO[]
+  roles: RoleConfigDTO[]
+  configDir: string
+}
+
+export interface SessionMetaDTO {
+  id: string
+  label: string
+  cwd: string
+  systemPrompt: string
+  roleId: string
+  ownerId: number
+  titleHint: string
+}
+
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
   testConnection: (url: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
+  selectPromptFile: () => Promise<string | null>
+  selectDirectory: () => Promise<string | null>
+  readTextFile: (path: string) => Promise<string>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
+
+  // Menu commands from the native menu
+  onMenuCommand: (cb: (cmd: 'menu:new-shell' | 'menu:new-shell-with-role') => void) => () => void
+
+  // Config
+  loadConfig: () => Promise<ConfigBundleDTO>
+  saveModels: (models: ModelConfigDTO[]) => Promise<ConfigBundleDTO>
+  saveRoles: (roles: RoleConfigDTO[]) => Promise<ConfigBundleDTO>
+  resetRoles: () => Promise<ConfigBundleDTO>
+  readRolesYaml: () => Promise<string>
+  writeRolesYaml: (raw: string) => Promise<{ ok: true; bundle: ConfigBundleDTO } | { ok: false; error: string }>
+  configDir: () => Promise<string>
+
+  // Sessions
+  createSession: (payload: {
+    cwd: string
+    command?: string
+    label: string
+    roleId: string
+    systemPrompt: string
+    cols?: number
+    rows?: number
+    settingsJson?: string
+  }) => Promise<{ id: string; meta: SessionMetaDTO }>
+  writeSession: (id: string, data: string) => Promise<boolean>
+  resizeSession: (id: string, cols: number, rows: number) => Promise<boolean>
+  killSession: (id: string) => Promise<boolean>
+  listSessions: () => Promise<SessionMetaDTO[]>
+  replaySession: (id: string) => Promise<string | null>
+  detachSession: (id: string, label: string, cwd: string) => Promise<{ ok: boolean; error?: string }>
+  attachSession: (id: string) => Promise<boolean>
+  isDetachedWindow: () => Promise<{ detached: boolean; sessionId: string | null; label: string | null; cwd: string | null }>
+
+  // Subscriptions (returns an unsubscribe fn)
+  onSessionData: (cb: (payload: { id: string; data: string }) => void) => () => void
+  onSessionExit: (cb: (payload: { id: string; exitCode: number; signal?: number }) => void) => () => void
 }
 
 declare global {
@@ -20,10 +99,56 @@ declare global {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Exposed API
+// -----------------------------------------------------------------------------
+
 contextBridge.exposeInMainWorld('electronAPI', {
   copyToClipboard: (text: string) => ipcRenderer.invoke('clipboard:write', text),
   testConnection: (url: string) => ipcRenderer.invoke('test-connection', url),
   selectTerminal: () => ipcRenderer.invoke('select-terminal'),
-  launchTerminal: (payload: { terminalPath: string; command: string }) =>
-    ipcRenderer.invoke('launch-terminal', payload)
+  selectPromptFile: () => ipcRenderer.invoke('select-prompt-file'),
+  selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  readTextFile: (path) => ipcRenderer.invoke('read-text-file', path),
+  launchTerminal: (payload) => ipcRenderer.invoke('launch-terminal', payload),
+
+  onMenuCommand: (cb) => {
+    const newShell = () => cb('menu:new-shell')
+    const newShellRole = () => cb('menu:new-shell-with-role')
+    ipcRenderer.on('menu:new-shell', newShell)
+    ipcRenderer.on('menu:new-shell-with-role', newShellRole)
+    return () => {
+      ipcRenderer.removeListener('menu:new-shell', newShell)
+      ipcRenderer.removeListener('menu:new-shell-with-role', newShellRole)
+    }
+  },
+
+  loadConfig: () => ipcRenderer.invoke('config:load'),
+  saveModels: (models) => ipcRenderer.invoke('config:save-models', models),
+  saveRoles: (roles) => ipcRenderer.invoke('config:save-roles', roles),
+  resetRoles: () => ipcRenderer.invoke('config:reset-roles'),
+  readRolesYaml: () => ipcRenderer.invoke('config:read-roles-yaml'),
+  writeRolesYaml: (raw) => ipcRenderer.invoke('config:write-roles-yaml', raw),
+  configDir: () => ipcRenderer.invoke('config:dir'),
+
+  createSession: (payload) => ipcRenderer.invoke('session:create', payload),
+  writeSession: (id, data) => ipcRenderer.invoke('session:input', { id, data }),
+  resizeSession: (id, cols, rows) => ipcRenderer.invoke('session:resize', { id, cols, rows }),
+  killSession: (id) => ipcRenderer.invoke('session:kill', { id }),
+  listSessions: () => ipcRenderer.invoke('session:list'),
+  replaySession: (id) => ipcRenderer.invoke('session:replay', { id }),
+  detachSession: (id, label, cwd) => ipcRenderer.invoke('session:detach', { id, label, cwd }),
+  attachSession: (id) => ipcRenderer.invoke('session:attach', { id }),
+  isDetachedWindow: () => ipcRenderer.invoke('app:is-detached'),
+
+  onSessionData: (cb) => {
+    const listener = (_: unknown, payload: { id: string; data: string }) => cb(payload)
+    ipcRenderer.on('session:data', listener)
+    return () => ipcRenderer.removeListener('session:data', listener)
+  },
+  onSessionExit: (cb) => {
+    const listener = (_: unknown, payload: { id: string; exitCode: number; signal?: number }) => cb(payload)
+    ipcRenderer.on('session:exit', listener)
+    return () => ipcRenderer.removeListener('session:exit', listener)
+  }
 })

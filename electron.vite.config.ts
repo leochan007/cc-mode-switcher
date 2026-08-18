@@ -10,6 +10,10 @@ export default defineConfig({
         entry: resolve(__dirname, 'src/main/index.ts'),
         formats: ['cjs'],
         fileName: () => 'index.js'
+      },
+      rollupOptions: {
+        // node-pty is a native module that must not be bundled
+        external: ['node-pty']
       }
     }
   },
