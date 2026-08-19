@@ -7,6 +7,13 @@ name: Set version & tag
 # Old tags/releases are NOT deleted — downgrade keeps everything, cleanup is manual.
 # If the target tag already exists on origin, this workflow refuses; re-publish the
 # existing tag via "Release Electron App" → Run workflow → tag=… instead.
+#
+# Edge case: when the requested version equals the current version (e.g. someone
+# bumped package.json manually but forgot to push the tag, or this workflow
+# failed mid-run earlier), there is nothing to commit but the tag may still be
+# missing on origin. In that case we print a notice and create the tag without
+# a commit, instead of erroring with "no changes to commit". The pre-existing
+# tag-existence guard still rejects the case where the tag IS on origin.
 on:
   workflow_dispatch:
     inputs:
@@ -133,12 +140,16 @@ jobs:
 
           git add package.json pnpm-lock.yaml src/renderer/src/components/SettingsPanel.vue
           if git diff --cached --quiet; then
-            echo "::error::No changes to commit — resolved version equals current?"
-            exit 1
+            # Resolved version equals current — there's nothing to commit.
+            # The "Reject if target tag already exists on origin" step ran earlier
+            # and let us through, so the tag is genuinely missing on origin.
+            # Tag-only runs are valid: re-tag the current release without a new commit.
+            echo "::notice::Resolved version equals current ($NEW) — no source changes to commit"
+            echo "::notice::Tag '${TAG}' is not on origin (verified above) — creating tag without a commit"
+          else
+            git commit -m "release v${NEW}"
+            git push origin HEAD:main
           fi
 
-          git commit -m "release v${NEW}"
           git tag "$TAG"
-
-          git push origin HEAD:main
           git push origin "$TAG"
