@@ -117,16 +117,43 @@ onMounted(() => {
   term.value.open(hostEl.value)
 
   const doFit = () => {
-    if (!fit || !term.value || !props.sessionId) return
+    if (!fit || !term.value || !hostEl.value) return
+    // Skip if the host has no dimensions (display: none, not yet laid out).
+    // The watcher below retries once the tab becomes visible.
+    if (hostEl.value.clientWidth === 0 || hostEl.value.clientHeight === 0) return
     try {
       fit.fit()
-      window.electronAPI.resizeSession(props.sessionId, term.value.cols, term.value.rows)
+      // Re-render any rows xterm.js may have dropped while the host was
+      // hidden — without this, terminals mounted with display:none come
+      // back blank (xterm doesn't paint into a 0×0 backing store).
+      term.value.refresh(0, term.value.rows - 1)
+      if (props.sessionId) {
+        window.electronAPI.resizeSession(props.sessionId, term.value.cols, term.value.rows)
+      }
     } catch {
       /* not ready */
     }
   }
   doFit()
   requestAnimationFrame(doFit)
+
+  // Re-fit when:
+  //   (a) the tab becomes active (display flips none → block, terminal needs
+  //       to be re-measured and re-rendered into the now-visible canvas), or
+  //   (b) the session id finally resolves (createSession IPC can finish AFTER
+  //       this component's onMounted runs, leaving the initial doFit to bail
+  //       on a null sessionId).
+  // ResizeObserver is unreliable across display: none ↔ block transitions in
+  // multi-tab setups (a known Chromium quirk), so we drive re-fit from reactive
+  // props instead of relying on it.
+  watch(
+    () => [props.isActive, props.sessionId] as const,
+    ([active, id]) => {
+      if (active && id) {
+        requestAnimationFrame(() => doFit())
+      }
+    }
+  )
 
   resizeObs = new ResizeObserver(() => doFit())
   resizeObs.observe(hostEl.value)
