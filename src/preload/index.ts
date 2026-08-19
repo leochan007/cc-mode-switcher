@@ -54,7 +54,7 @@ export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
   testConnection: (url: string, apiKey?: string, modelId?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
-  selectDirectory: () => Promise<string | null>
+  selectDirectory: (opts?: { purpose?: 'default' | 'oneoff'; defaultCwd?: string }) => Promise<string | null>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 
   // Menu commands from the native menu
@@ -76,7 +76,7 @@ export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
   testConnection: (url: string, apiKey?: string, modelId?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
-  selectDirectory: () => Promise<string | null>
+  selectDirectory: (opts?: { purpose?: 'default' | 'oneoff'; defaultCwd?: string }) => Promise<string | null>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 
   // Config
@@ -124,7 +124,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   copyToClipboard: (text: string) => ipcRenderer.invoke('clipboard:write', text),
   testConnection: (url: string, apiKey?: string, modelId?: string) => ipcRenderer.invoke('test-connection', url, apiKey, modelId),
   selectTerminal: () => ipcRenderer.invoke('select-terminal'),
-  selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  selectDirectory: (opts) => ipcRenderer.invoke('select-directory', opts),
   launchTerminal: (payload) => ipcRenderer.invoke('launch-terminal', payload),
 
   onMenuCommand: (cb) => {

@@ -362,16 +362,39 @@ ipcMain.handle('select-terminal', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
-/** Native folder picker — used when launching a new shell with no cwd history. */
-ipcMain.handle('select-directory', async () => {
-  if (!mainWindow) return null
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Choose working directory for the new shell',
-    defaultPath: app.getPath('home'),
-    properties: ['openDirectory', 'createDirectory']
-  })
-  return result.canceled ? null : result.filePaths[0]
-})
+/**
+ * Native folder picker — used when launching a new shell with no cwd history,
+ * or by the first-run / settings-page default-cwd prompt.
+ *
+ * opts.purpose:
+ *   - 'default' → "Choose your default working directory" (used by first-run
+ *                 prompt + SettingsPanel Change… button)
+ *   - 'oneoff'  → "Choose working directory for the new shell" (legacy;
+ *                 Open Folder…/Cmd+O and the legacy fallback path)
+ *
+ * opts.defaultCwd: preferred dialog starting path. Renderer passes its
+ * localStorage `cc_default_cwd` so the dialog opens at the user's chosen
+ * default. main does NOT read localStorage — single-source rule.
+ */
+ipcMain.handle(
+  'select-directory',
+  async (_event, opts?: { purpose?: 'default' | 'oneoff'; defaultCwd?: string } = {}) => {
+    if (!mainWindow) return null
+    const purpose = opts.purpose ?? 'oneoff'
+    const title = purpose === 'default'
+      ? 'Choose your default working directory'
+      : 'Choose working directory for the new shell'
+    const defaultPath = (typeof opts.defaultCwd === 'string' && opts.defaultCwd.length > 0)
+      ? opts.defaultCwd
+      : app.getPath('home')
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title,
+      defaultPath,
+      properties: ['openDirectory', 'createDirectory']
+    })
+    return result.canceled ? null : result.filePaths[0]
+  }
+)
 
 /**
  * NOTE: The old `select-prompt-file` and `read-text-file` IPC handlers were
