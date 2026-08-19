@@ -51,6 +51,8 @@
       "**/node_modules/node-pty/**/*"
     ],
     "mac": {
+      "hardenedRuntime": false,
+      "identity": null,
       "target": [
         {
           "target": "dmg",
