@@ -103,6 +103,24 @@ The `.cc-delivery/` directory in your project cwd is the **shared workspace** fo
 - **Replace** the entire JSON block in `status.md` — never partially edit it.
 - **Never** write to `plan_output.md` if you are not Planner. If the plan needs revision, surface it via `worker_report.md` and emit `WORKER_BLOCKED`.
 
+### Asymmetric territory rule (for Plan ↔ Worker handoff)
+
+When two roles have a **producer/consumer** relationship, treat the file space as **two territories**:
+
+|  | plan-class files (`.cc-delivery/*`) | non-plan files (project source) |
+| --- | --- | --- |
+| **Planner** | full control (read / write / retire) | **read only** |
+| **Worker** | **read only** (own docs only) | full control (per plan §4) |
+
+In words:
+
+- **Planner writes only inside `.cc-delivery/`.** It cannot touch project source — that's Worker's territory.
+- **Worker writes only files listed in `plan_output.md` §4.** It cannot touch other plan-class files like `plan_output.md`, `worker_report.md` (already its own but Planner reads), or `retired/*`.
+
+This **asymmetry is the contract**. Each role has full power over its own deliverables and read-only visibility of the other's. Violating it is a breach — even if the violation would be technically convenient. Document your role's territory table in `## 4 Tools / Constraints` of the role's prompt.
+
+**Retire pattern** (Planner side): since Planner has no `Bash`, "deleting" a stale plan means writing its content to `.cc-delivery/retired/plan-<ISO>.md` (first line `RETIRED: <reason>`), then overwriting the active file. The app never physically deletes; humans (or future cleanup tooling) handle `.cc-delivery/retired/*`.
+
 ### `status.md` schema
 
 `status.md` has a single JSON block (with `json` language hint) at the top. Replace the whole block on each update:

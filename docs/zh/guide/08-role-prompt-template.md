@@ -103,6 +103,24 @@ WORKER_BLOCKED: §4 第 3 项引用了一个已删除文件，需要 Planner 复
 - **Replace** `status.md` 中的整个 JSON 块 —— 永远不部分编辑它。
 - **永远不要**写 `plan_output.md`，除非你是 Planner。如果 plan 需要修改，通过 `worker_report.md` 提出，并发出 `WORKER_BLOCKED`。
 
+### 不对称 territory 规则（用于 Plan ↔ Worker handoff）
+
+当两个角色是 **生产者/消费者**关系时，把文件空间看成**两个 territory**：
+
+|  | plan-class 文件（`.cc-delivery/*`） | 非 plan 文件（项目源码） |
+| --- | --- | --- |
+| **Planner** | 完全控制（读 / 写 / retire） | **只读** |
+| **Worker** | **只读**（自己拥有的几个除外） | 完全控制（按 plan §4） |
+
+用人话说：
+
+- **Planner 只能在 `.cc-delivery/` 内写**。不能碰项目源码 —— 那是 Worker 的 territory。
+- **Worker 只能写 `plan_output.md` §4 列出来的文件**。不能碰其他 plan-class 文件（`plan_output.md` 本身、其他人的报告、`retired/*` 等）。
+
+这种**不对称就是契约**。每个角色对自己的 deliverable 有完全控制权，对方的只有只读权限。即使技术上能"方便地"越界，越界就是违约。每个角色 prompt 的 `## 4 Tools / Constraints` 里都要明确写自己的 territory 表。
+
+**Retire 模式**（Planner 侧）：Planner 没有 `Bash`，所以"删除"旧 plan = 把它的内容写到 `.cc-delivery/retired/plan-<ISO>.md`（首行 `RETIRED: <原因>`），然后覆盖 active 文件。App 永远不物理删除；`.cc-delivery/retired/*` 留给人（或未来的 cleanup 工具）处理。
+
 ### `status.md` schema
 
 `status.md` 顶部有一个 JSON 块（带 `json` 语言提示）。每次更新替换整个块：
