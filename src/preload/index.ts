@@ -49,11 +49,9 @@ export interface SessionMetaDTO {
 
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
-  testConnection: (url: string) => Promise<ConnectionTestResult>
+  testConnection: (url: string, apiKey?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
-  selectPromptFile: () => Promise<string | null>
   selectDirectory: () => Promise<string | null>
-  readTextFile: (path: string) => Promise<string>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 
   // Menu commands from the native menu
@@ -73,11 +71,9 @@ export type MenuCommand =
 
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
-  testConnection: (url: string) => Promise<ConnectionTestResult>
+  testConnection: (url: string, apiKey?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
-  selectPromptFile: () => Promise<string | null>
   selectDirectory: () => Promise<string | null>
-  readTextFile: (path: string) => Promise<string>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 
   // Config
@@ -123,11 +119,9 @@ declare global {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   copyToClipboard: (text: string) => ipcRenderer.invoke('clipboard:write', text),
-  testConnection: (url: string) => ipcRenderer.invoke('test-connection', url),
+  testConnection: (url: string, apiKey?: string) => ipcRenderer.invoke('test-connection', url, apiKey),
   selectTerminal: () => ipcRenderer.invoke('select-terminal'),
-  selectPromptFile: () => ipcRenderer.invoke('select-prompt-file'),
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
-  readTextFile: (path) => ipcRenderer.invoke('read-text-file', path),
   launchTerminal: (payload) => ipcRenderer.invoke('launch-terminal', payload),
 
   onMenuCommand: (cb) => {

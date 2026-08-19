@@ -44,7 +44,7 @@ async function runTest(): Promise<void> {
   if (testing.value) return
   testing.value = true
   try {
-    const r = await window.electronAPI.testConnection(props.model.baseUrl)
+    const r = await window.electronAPI.testConnection(props.model.baseUrl, props.model.apiKey)
     if (r.ok) {
       toast.success(t('toast.connected', { name: props.model.name, ms: r.ms, status: r.status ?? '' }))
     } else {

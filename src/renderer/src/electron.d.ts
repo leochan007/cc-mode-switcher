@@ -17,13 +17,15 @@ export interface ModelConfigDTO {
 
 export interface RoleConfigDTO {
   id: string
-  label: string
+  /** references ModelConfigDTO.id; '' = unbound */
   model: string
   thinking: boolean
+  /** Inline system prompt content (no longer a file path). */
   systemPrompt: string
   disallowedPlugins: string[]
   allowedTools: string[]
   disallowedTools: string[]
+  /** accent color for the role */
   color: string
 }
 
@@ -43,20 +45,6 @@ export interface SessionMetaDTO {
   titleHint: string
 }
 
-export interface ElectronAPI {
-  copyToClipboard: (text: string) => Promise<boolean>
-  testConnection: (url: string) => Promise<ConnectionTestResult>
-  selectTerminal: () => Promise<string | null>
-  selectPromptFile: () => Promise<string | null>
-  selectDirectory: () => Promise<string | null>
-  readTextFile: (path: string) => Promise<string>
-  launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
-
-  setRecentCwds: (paths: string[]) => Promise<boolean>
-
-  onMenuCommand: (cb: (cmd: MenuCommand, payload?: unknown) => void) => () => void
-}
-
 export type MenuCommand =
   | 'menu:new-session-internal'
   | 'menu:new-session-external'
@@ -67,12 +55,14 @@ export type MenuCommand =
 
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
-  testConnection: (url: string) => Promise<ConnectionTestResult>
+  /** Optional 2nd arg `apiKey` lets the test authenticate against /v1/models. */
+  testConnection: (url: string, apiKey?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
-  selectPromptFile: () => Promise<string | null>
   selectDirectory: () => Promise<string | null>
-  readTextFile: (path: string) => Promise<string>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
+
+  setRecentCwds: (paths: string[]) => Promise<boolean>
+  onMenuCommand: (cb: (cmd: MenuCommand, payload?: unknown) => void) => () => void
 
   loadConfig: () => Promise<ConfigBundleDTO>
   saveModels: (models: ModelConfigDTO[]) => Promise<ConfigBundleDTO>

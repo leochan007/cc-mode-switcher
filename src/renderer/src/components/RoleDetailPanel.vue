@@ -3,7 +3,7 @@
     <div class="detail-header">
       <div>
         <div class="detail-label">{{ t('detail.title') }}</div>
-        <div class="detail-name">{{ role?.label || t('detail.noneSelected') }}</div>
+        <div class="detail-name">{{ role?.id || t('detail.noneSelected') }}</div>
       </div>
       <div class="detail-actions">
         <IconButton
@@ -163,15 +163,11 @@ watch(
       script.value = ''
       return
     }
-    // Read the system prompt file via IPC so we can inline its content
-    // into the launch script (claude CLI doesn't support --system-prompt-file).
-    const prompt = role.systemPrompt
-      ? await window.electronAPI.readTextFile(role.systemPrompt)
-      : ''
+    // systemPrompt is now inline YAML content (no file I/O needed).
     script.value = buildLaunchScript({
       role,
       model,
-      systemPromptContent: prompt
+      systemPromptContent: role.systemPrompt ?? ''
     })
   },
   { immediate: true }

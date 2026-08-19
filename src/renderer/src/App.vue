@@ -191,26 +191,16 @@ function shellQuote(s: string): string {
 
 /**
  * Build a bootstrap script that wires up cc-<id>() shell functions for
- * every bound role. Cached prompt-file reads (keyed by path) so we don't
- * re-read the same .md multiple times when the user has N roles.
+ * every bound role. systemPrompt is now inline content (no file I/O needed),
+ * so this is just a straight projection.
  */
-const promptCache = new Map<string, string>()
-async function readPromptCached(path: string): Promise<string> {
-  if (promptCache.has(path)) return promptCache.get(path)!
-  const text = await window.electronAPI.readTextFile(path)
-  promptCache.set(path, text)
-  return text
-}
-
-/** Build launch entries for every role that has a model bound */
 async function buildBoundEntries(): Promise<LaunchScriptEntry[]> {
   const bound = roles.value.filter((r) => r.model)
   const entries: LaunchScriptEntry[] = []
   for (const role of bound) {
     const model = models.value.find((m) => m.id === role.model)
     if (!model) continue
-    const prompt = role.systemPrompt ? await readPromptCached(role.systemPrompt) : ''
-    entries.push({ role, model, systemPromptContent: prompt })
+    entries.push({ role, model, systemPromptContent: role.systemPrompt ?? '' })
   }
   return entries
 }
@@ -279,11 +269,18 @@ onMounted(async () => {
 
 // ---------- Handlers ----------
 async function onAddRole(): Promise<void> {
-  // Just add the role — it will start unbound; the user can bind a model
-  // from the model dropdown inside the row (or via the "Manage models…" entry).
-  const role = await addRole()
-  selectedRoleId.value = role.id
-  toast.success(t('toast.roleAdded', { id: role.id }))
+  // Roles now require an explicit name (no more auto-generated `role-XXX`).
+  // We use window.prompt() here for the simplest UX; a dedicated inline-input
+  // modal can replace it later without touching the composable.
+  const name = window.prompt(t('roleEdit.namePrompt'))?.trim()
+  if (!name) return
+  try {
+    const role = await addRole(name)
+    selectedRoleId.value = role.id
+    toast.success(t('toast.roleAdded', { id: role.id }))
+  } catch (err: any) {
+    toast.error(err?.message ?? String(err))
+  }
 }
 
 async function onPatchRole(id: string, patch: Partial<RoleConfig>): Promise<void> {
@@ -481,11 +478,8 @@ async function launchExternalWithRole(roleId: string, terminalPath?: string): Pr
   }
   const cwd = await resolveCwdForNewShell()
   if (!cwd) return
-  const prompt = role.systemPrompt
-    ? await window.electronAPI.readTextFile(role.systemPrompt)
-    : ''
   const script = buildExternalSessionScript({
-    entries: [{ role, model, systemPromptContent: prompt }],
+    entries: [{ role, model, systemPromptContent: role.systemPrompt ?? '' }],
     cwd
   })
   const ok = await window.electronAPI.launchTerminal({
@@ -516,10 +510,7 @@ async function launchInternalWithRole(roleId: string): Promise<void> {
   }
   const cwd = await resolveCwdForNewShell()
   if (!cwd) return
-  const prompt = role.systemPrompt
-    ? await window.electronAPI.readTextFile(role.systemPrompt)
-    : ''
-  const script = buildLaunchScript({ role, model, systemPromptContent: prompt })
+  const script = buildLaunchScript({ role, model, systemPromptContent: role.systemPrompt ?? '' })
   const tabId = await openShellTab({ cwd, bootstrap: script, color: role.color })
   if (!tabId) {
     toast.error(t('toast.tabOpenFail'))
@@ -555,6 +546,14 @@ function isTerminalFocus(): boolean {
 }
 
 function onKey(ev: KeyboardEvent): void {
+  // Hard early-return: if focus is on any editable text element, hand the
+  // event to the browser entirely. Cmd+A / Cmd+C / Cmd+V / Cmd+X must work
+  // in inputs even if other handlers exist on window.
+  const ae = document.activeElement as HTMLElement | null
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+    return
+  }
+
   const isMac = navigator.platform.toLowerCase().includes('mac')
   const cmdT = isMac ? ev.metaKey && ev.key === 't' : ev.ctrlKey && ev.key === 't'
   const cmdN = isMac ? ev.metaKey && ev.key === 'n' : ev.ctrlKey && ev.key === 'n'

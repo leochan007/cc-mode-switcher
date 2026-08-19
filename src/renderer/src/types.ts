@@ -11,12 +11,18 @@ export interface ModelConfig {
 }
 
 export interface RoleConfig {
+  /**
+   * Single name field — used as both the YAML top-level key and the user-facing
+   * display name (the older `label` field is gone). Must be unique among roles.
+   */
   id: string
-  label: string
   /** references ModelConfig.id; '' = unbound */
   model: string
   thinking: boolean
-  /** absolute path of the prompt file */
+  /**
+   * Inline system prompt content (no longer a file path). Written as a YAML
+   * block scalar in roles.yaml so multi-line content survives the round-trip.
+   */
   systemPrompt: string
   disallowedPlugins: string[]
   allowedTools: string[]

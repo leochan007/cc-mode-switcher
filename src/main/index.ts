@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, dialog, Menu, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, clipboard, dialog, Menu, MenuItem, shell } from 'electron'
 import { execSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
@@ -78,6 +78,47 @@ function createMainWindow(): BrowserWindow {
   return win
 }
 
+/**
+ * Wire up the right-click context menu for any webContents so inputs / text
+ * areas / selectable content get Cut / Copy / Paste / Select All. Without this
+ * Electron shows nothing on right-click — keyboard shortcuts still work, but
+ * users pasting long strings (API keys, base URLs) instinctively reach for
+ * the context menu and conclude "copy-paste is broken".
+ *
+ * Uses Electron's built-in roles so the actual clipboard work is handled by
+ * Chromium against the focused element. The renderer's own @contextmenu
+ * handlers (XtermTab, RoleDetailPanel, RolesTable, TerminalTabs) call
+ * .preventDefault() on the renderer-side event, which suppresses this
+ * handler — so custom menus stay custom.
+ */
+function wireContextMenu(win: BrowserWindow): void {
+  win.webContents.on('context-menu', (_event, params) => {
+    const menu = new Menu()
+    const f = params.editFlags
+
+    if (f.canUndo || f.canRedo) {
+      if (f.canUndo) menu.append(new MenuItem({ label: 'Undo', role: 'undo' }))
+      if (f.canRedo) menu.append(new MenuItem({ label: 'Redo', role: 'redo' }))
+      menu.append(new MenuItem({ type: 'separator' }))
+    }
+
+    if (f.canCut || f.canCopy || f.canPaste) {
+      if (f.canCut)   menu.append(new MenuItem({ label: 'Cut',  role: 'cut'  }))
+      if (f.canCopy)  menu.append(new MenuItem({ label: 'Copy', role: 'copy' }))
+      if (f.canPaste) menu.append(new MenuItem({ label: 'Paste', role: 'paste' }))
+      menu.append(new MenuItem({ type: 'separator' }))
+    }
+
+    if (f.canSelectAll) {
+      menu.append(new MenuItem({ label: 'Select All', role: 'selectAll' }))
+    }
+
+    if (menu.items.length > 0) {
+      menu.popup({ window: win })
+    }
+  })
+}
+
 // -----------------------------------------------------------------------------
 // App lifecycle
 // -----------------------------------------------------------------------------
@@ -103,10 +144,12 @@ app.whenReady().then(() => {
   pruneLaunchCache()
 
   mainWindow = createMainWindow()
+  wireContextMenu(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createMainWindow()
+      wireContextMenu(mainWindow)
     }
   })
 })
@@ -228,15 +271,32 @@ ipcMain.handle('clipboard:write', async (_event, text: string) => {
   return true
 })
 
-ipcMain.handle('test-connection', async (_event, url: string) => {
+ipcMain.handle('test-connection', async (_event, url: string, apiKey?: string) => {
   const started = Date.now()
   try {
     const parsed = new URL(url)
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       throw new Error('invalid URL protocol')
     }
-    const res = await fetch(parsed, {
+    // Don't GET the base URL directly — most Anthropic-compatible providers
+    // don't register a GET handler at the base path, so it returns 404 even
+    // when the API is perfectly healthy (GLM's base path happens to serve
+    // docs, MiniMax's doesn't — same problem, different symptom).
+    // /v1/models is part of the Anthropic API spec and all compatible
+    // providers must implement it; a 200 here means URL+key both correct.
+    // 401/403 means URL right but key invalid/expired. 404 means URL wrong.
+    const testUrl = parsed.toString().replace(/\/+$/, '') + '/v1/models'
+    const headers: Record<string, string> = {}
+    if (apiKey) {
+      // Send x-api-key (Anthropic's official header) AND Authorization: Bearer
+      // — most Anthropic-compatible providers accept either, but a few reject
+      // the wrong one outright, so belt-and-braces is cheap here.
+      headers['x-api-key'] = apiKey
+      headers['Authorization'] = `Bearer ${apiKey}`
+    }
+    const res = await fetch(testUrl, {
       method: 'GET',
+      headers,
       redirect: 'manual',
       signal: AbortSignal.timeout(8000)
     })
@@ -274,39 +334,11 @@ ipcMain.handle('select-directory', async () => {
 })
 
 /**
- * Pick a file to use as a role's system prompt. Defaults to the user's
- * ~/.cc-mode-switcher/prompts/ folder and filters to .md files; the user can
- * still type any path in the input (absolute or ~/...) — this picker is just
- * a shortcut.
+ * NOTE: The old `select-prompt-file` and `read-text-file` IPC handlers were
+ * removed when systemPrompt became inline YAML content (no more external
+ * .md files). The role edit modal now uses a <textarea>; the launch script
+ * reads role.systemPrompt directly with no file I/O.
  */
-ipcMain.handle('select-prompt-file', async () => {
-  if (!mainWindow) return null
-  const home = app.getPath('home')
-  const defaultDir = path.join(home, '.cc-mode-switcher', 'prompts')
-  const startIn = fs.existsSync(defaultDir) ? defaultDir : home
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Choose system prompt file',
-    defaultPath: startIn,
-    properties: ['openFile'],
-    filters: [
-      { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-  })
-  return result.canceled ? null : result.filePaths[0]
-})
-
-/**
- * Read a text file (used by the renderer to inline the system prompt into
- * the launch script — the claude CLI doesn't accept `--system-prompt-file`).
- */
-ipcMain.handle('read-text-file', async (_event, filePath: string): Promise<string> => {
-  try {
-    return fs.readFileSync(filePath, 'utf8')
-  } catch (err: any) {
-    return ''
-  }
-})
 
 function applescriptEscape(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')

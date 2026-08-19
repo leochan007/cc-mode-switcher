@@ -30,7 +30,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
     "electron": "42.0.0",
-    "electron-builder": "26.15.3",
+    "electron-builder": "26.0.0",
     "electron-vite": "^5.0.0",
     "typescript": "^5.8.0",
     "vite": "^7.0.0",
@@ -49,16 +49,18 @@
 
     "files": [
       "out/**/*",
+      "build/**/*",
       "node_modules/node-pty/**/*"
     ],
 
     "asarUnpack": [
-      "**/node_modules/node-pty/**/*"
+      "node_modules/node-pty/prebuilds/**/*"
     ],
 
     "mac": {
       "icon": "build/icon.icns",
       "hardenedRuntime": false,
+      "gatekeeperAssess": false,
       "identity": null,
       "target": [
         {

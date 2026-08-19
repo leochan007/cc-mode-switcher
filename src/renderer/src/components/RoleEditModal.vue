@@ -10,10 +10,6 @@
         <div v-if="role" class="modal-body">
           <div class="form-grid">
             <div class="form-group">
-              <label>{{ t('roleEdit.label') }}</label>
-              <input v-model="draft.label" />
-            </div>
-            <div class="form-group">
               <label>{{ t('roleEdit.model') }}</label>
               <select v-model="draft.model">
                 <option value="">{{ t('roles.unbound') }}</option>
@@ -28,10 +24,13 @@
             </div>
             <div class="form-group full">
               <label>{{ t('roleEdit.systemPrompt') }}</label>
-              <div class="input-with-btn">
-                <input v-model="draft.systemPrompt" :placeholder="t('roleEdit.systemPromptPh')" />
-                <button class="btn-ghost compact" type="button" :title="t('roleEdit.browse')" @click="pickPromptFile">📁</button>
-              </div>
+              <textarea
+                v-model="draft.systemPrompt"
+                class="prompt-textarea"
+                spellcheck="false"
+                :placeholder="t('roleEdit.systemPromptPh')"
+                rows="10"
+              />
             </div>
             <div class="form-group">
               <label>{{ t('roleEdit.allowedTools') }}</label>
@@ -77,7 +76,6 @@ const { t } = useI18n()
 
 const draft = reactive<RoleConfig>({
   id: '',
-  label: '',
   model: '',
   thinking: false,
   systemPrompt: '',
@@ -95,7 +93,6 @@ watch(
   (r) => {
     if (!r) return
     draft.id = r.id
-    draft.label = r.label
     draft.model = r.model
     draft.thinking = r.thinking
     draft.systemPrompt = r.systemPrompt
@@ -111,7 +108,6 @@ watch(
 // re-set dirty on user input
 watch(
   () => [
-    draft.label,
     draft.model,
     draft.thinking,
     draft.systemPrompt,
@@ -122,7 +118,6 @@ watch(
   () => {
     if (!props.role) return
     dirty.value =
-      props.role.label !== draft.label ||
       props.role.model !== draft.model ||
       props.role.thinking !== draft.thinking ||
       props.role.systemPrompt !== draft.systemPrompt ||
@@ -135,7 +130,6 @@ watch(
 function save(): void {
   if (!props.role) return
   emit('save', props.role.id, {
-    label: draft.label,
     model: draft.model,
     thinking: draft.thinking,
     systemPrompt: draft.systemPrompt,
@@ -144,11 +138,6 @@ function save(): void {
     disallowedTools: [...draft.disallowedTools]
   })
   dirty.value = false
-}
-
-async function pickPromptFile(): Promise<void> {
-  const picked = await window.electronAPI.selectPromptFile()
-  if (picked) draft.systemPrompt = picked
 }
 </script>
 
@@ -231,6 +220,22 @@ async function pickPromptFile(): Promise<void> {
 }
 .input-with-btn input { flex: 1; }
 .input-with-btn button { flex: 0 0 auto; padding: 4px 10px; }
+
+.prompt-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'SF Mono', Monaco, monospace;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+  min-height: 200px;
+}
+.prompt-textarea:focus { border-color: #3b82f6; }
 
 .modal-actions {
   padding: 12px 20px;

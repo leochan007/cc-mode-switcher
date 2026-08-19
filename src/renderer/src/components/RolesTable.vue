@@ -134,7 +134,6 @@ const filtered = computed(() => {
   return props.roles.filter(
     (r) =>
       r.id.toLowerCase().includes(q) ||
-      r.label.toLowerCase().includes(q) ||
       (props.models.find((m) => m.id === r.model)?.name ?? '').toLowerCase().includes(q)
   )
 })

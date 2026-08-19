@@ -17,14 +17,21 @@ export interface ModelConfig {
 }
 
 export interface RoleConfig {
+  /**
+   * Single name field — used as both the YAML top-level key and the user-facing
+   * display name (the older `label` field is gone). Must be unique among roles.
+   */
   id: string
-  label: string
-  model: string // references ModelConfig.id; '' = unbound
+  /** references ModelConfig.id; '' = unbound */
+  model: string
   thinking: boolean
-  systemPrompt: string // absolute path to the prompt file
+  /** Inline system prompt content (no longer a file path). */
+  systemPrompt: string
   disallowedPlugins: string[]
   allowedTools: string[]
   disallowedTools: string[]
+  /** accent color for the role, used by the table row + terminal tab header */
+  color: string
 }
 
 export interface ConfigBundle {
@@ -46,7 +53,6 @@ function configDir(): string {
 
 const MODELS_FILE = 'models.yaml'
 const ROLES_FILE = 'roles.yaml'
-const PROMPTS_DIR = 'prompts'
 
 function modelsPath(dir: string): string {
   return path.join(dir, MODELS_FILE)
@@ -54,83 +60,74 @@ function modelsPath(dir: string): string {
 function rolesPath(dir: string): string {
   return path.join(dir, ROLES_FILE)
 }
-function promptsDir(dir: string): string {
-  return path.join(dir, PROMPTS_DIR)
-}
 
 // -----------------------------------------------------------------------------
 // Built-in defaults — written on first run or after a Reset
 // -----------------------------------------------------------------------------
 
 const DEFAULT_ROLES_YAML = `Plan:
-  label: 🧠 Plan
   model: ''
   thinking: true
-  systemPrompt: ~/.cc-mode-switcher/prompts/Plan.md
+  systemPrompt: |
+    # Plan Role
+
+    You are the **Planner** role in a multi-role Claude Code session.
+    Your job is to produce a thorough, executable plan — *not* to write business code.
+
+    ## Hard constraints
+    - Read-only: you MAY use Read / LS / Glob / Grep.
+    - You MUST NOT use Edit / Write / NotebookEdit / Bash.
+    - Superpowers plugin is disabled. Do not attempt to enable it.
+
+    ## Required workflow
+    1. Read the user's request and explore the project structure (LS, Glob, Grep, Read).
+    2. Produce a planning document at \`.cc-delivery/plan_output.md\` containing:
+       - Goal and scope (what's in / out)
+       - Architecture and module breakdown
+       - File-by-file change plan
+       - Risks, edge cases, test plan
+       - **Do not include full production code blocks** — sketches and snippets only.
+    3. After writing \`plan_output.md\`, end your response with the exact line:
+       \`PLAN_READY: please launch the Worker role on this plan.\`
+
+    ## Coordination contract
+    - **Worker** will read \`.cc-delivery/plan_output.md\` before starting work.
+    - If you discover requirements that need a Worker decision, list them under
+      \`## Open questions\` in the plan output instead of asking the user directly.
   disallowedPlugins: [superpowers]
   allowedTools: [Read, LS, Glob, Grep]
   disallowedTools: [Edit, Write, NotebookEdit, Bash]
   color: '#3b82f6'
 Worker:
-  label: ⚙️ Worker
   model: ''
   thinking: false
-  systemPrompt: ~/.cc-mode-switcher/prompts/Worker.md
+  systemPrompt: |
+    # Worker Role
+
+    You are the **Worker** role in a multi-role Claude Code session.
+    Your job is to execute the plan produced by the Planner.
+
+    ## Hard constraints
+    - Superpowers plugin is disabled. Do not attempt to enable it.
+    - Honour the tool allow / deny list given to this session.
+    - \`WebSearch\` is denied — rely on local files.
+
+    ## Required workflow
+    1. Read \`.cc-delivery/plan_output.md\` first. If it is missing, stop and tell the
+       user: \`NO_PLAN: please run the Planner role first.\`
+    2. Implement the plan, file by file.
+    3. After each meaningful milestone, append a short note to
+       \`.cc-delivery/worker_report.md\` (what changed, what blockers arose).
+    4. When the plan is complete, end your response with the exact line:
+       \`WORK_DONE: all plan items implemented.\`
+
+    ## Coordination contract
+    - Only **edit / write** files named in the Planner's plan.
+    - Do not modify \`.cc-delivery/plan_output.md\` — that file is owned by the Planner.
   disallowedPlugins: [superpowers]
   allowedTools: []
   disallowedTools: [WebSearch]
   color: '#a855f7'
-`
-
-const PLAN_PROMPT_MD = `# Plan Role
-
-You are the **Planner** role in a multi-role Claude Code session.
-Your job is to produce a thorough, executable plan — *not* to write business code.
-
-## Hard constraints
-- Read-only: you MAY use Read / LS / Glob / Grep.
-- You MUST NOT use Edit / Write / NotebookEdit / Bash.
-- Superpowers plugin is disabled. Do not attempt to enable it.
-
-## Required workflow
-1. Read the user's request and explore the project structure (LS, Glob, Grep, Read).
-2. Produce a planning document at \`.cc-delivery/plan_output.md\` containing:
-   - Goal and scope (what's in / out)
-   - Architecture and module breakdown
-   - File-by-file change plan
-   - Risks, edge cases, test plan
-   - **Do not include full production code blocks** — sketches and snippets only.
-3. After writing \`plan_output.md\`, end your response with the exact line:
-   \`PLAN_READY: please launch the Worker role on this plan.\`
-
-## Coordination contract
-- **Worker** will read \`.cc-delivery/plan_output.md\` before starting work.
-- If you discover requirements that need a Worker decision, list them under
-  \`## Open questions\` in the plan output instead of asking the user directly.
-`
-
-const WORKER_PROMPT_MD = `# Worker Role
-
-You are the **Worker** role in a multi-role Claude Code session.
-Your job is to execute the plan produced by the Planner.
-
-## Hard constraints
-- Superpowers plugin is disabled. Do not attempt to enable it.
-- Honour the tool allow / deny list given to this session.
-- \`WebSearch\` is denied — rely on local files.
-
-## Required workflow
-1. Read \`.cc-delivery/plan_output.md\` first. If it is missing, stop and tell the
-   user: \`NO_PLAN: please run the Planner role first.\`
-2. Implement the plan, file by file.
-3. After each meaningful milestone, append a short note to
-   \`.cc-delivery/worker_report.md\` (what changed, what blockers arose).
-4. When the plan is complete, end your response with the exact line:
-   \`WORK_DONE: all plan items implemented.\`
-
-## Coordination contract
-- Only **edit / write** files named in the Planner's plan.
-- Do not modify \`.cc-delivery/plan_output.md\` — that file is owned by the Planner.
 `
 
 // -----------------------------------------------------------------------------
@@ -141,16 +138,22 @@ interface ModelsYaml {
   [id: string]: Omit<ModelConfig, 'id'>
 }
 interface RolesYaml {
-  [id: string]: Omit<RoleConfig, 'id' | 'systemPrompt' | 'color'> & {
-    systemPrompt?: string
-    color?: string
+  [id: string]: Omit<RoleConfig, 'id'> & {
+    /** legacy field — ignored on read, stripped on write */
+    label?: string
   }
 }
 
-function defaultSystemPromptPath(roleId: string): string {
-  return path.join(promptsDir(configDir()), `${roleId}.md`)
+/** True iff `s` looks like a filesystem path rather than inline content. */
+function looksLikePromptPath(s: string): boolean {
+  if (!s) return false
+  if (s.startsWith('/') || s.startsWith('~')) return true
+  // bare filename ending in .md, no newlines (inline content rarely matches this)
+  if (/^[^\\n\\r]+\\.md$/.test(s.trim())) return true
+  return false
 }
 
+/** Expand a leading `~` to the user's home directory. */
 function expandHome(p: string): string {
   if (!p) return p
   if (p.startsWith('~')) return path.join(os.homedir(), p.slice(1))
@@ -183,17 +186,30 @@ function modelsToYaml(models: ModelConfig[]): string {
 
 function rolesFromYaml(text: string): RoleConfig[] {
   const doc = (YAML.parse(text) ?? {}) as RolesYaml
-  return Object.entries(doc).map(([id, r]) => ({
-    id,
-    label: String(r.label ?? id),
-    model: String(r.model ?? ''),
-    thinking: Boolean(r.thinking),
-    systemPrompt: expandHome(String(r.systemPrompt ?? defaultSystemPromptPath(id))),
-    disallowedPlugins: Array.isArray(r.disallowedPlugins) ? r.disallowedPlugins.map(String) : [],
-    allowedTools: Array.isArray(r.allowedTools) ? r.allowedTools.map(String) : [],
-    disallowedTools: Array.isArray(r.disallowedTools) ? r.disallowedTools.map(String) : [],
-    color: String(r.color ?? pickNextColor(doc))
-  }))
+  return Object.entries(doc).map(([id, r]) => {
+    // Migration: legacy format had systemPrompt pointing at ~/.cc-mode-switcher/prompts/<id>.md.
+    // In the new format it's inline YAML block-scalar content. If we see a
+    // path-like value, read the file (best-effort; missing file → empty).
+    let systemPrompt = String(r.systemPrompt ?? '')
+    if (looksLikePromptPath(systemPrompt)) {
+      const abs = expandHome(systemPrompt)
+      try {
+        systemPrompt = fs.readFileSync(abs, 'utf8')
+      } catch {
+        systemPrompt = ''
+      }
+    }
+    return {
+      id,
+      model: String(r.model ?? ''),
+      thinking: Boolean(r.thinking),
+      systemPrompt,
+      disallowedPlugins: Array.isArray(r.disallowedPlugins) ? r.disallowedPlugins.map(String) : [],
+      allowedTools: Array.isArray(r.allowedTools) ? r.allowedTools.map(String) : [],
+      disallowedTools: Array.isArray(r.disallowedTools) ? r.disallowedTools.map(String) : [],
+      color: String(r.color ?? pickNextColor(doc))
+    }
+  })
 }
 
 /** Pick the next color that hasn't been used by another role in this YAML */
@@ -211,7 +227,6 @@ function rolesToYaml(roles: RoleConfig[]): string {
   const obj: RolesYaml = {}
   for (const r of roles) {
     obj[r.id] = {
-      label: r.label,
       model: r.model,
       thinking: r.thinking,
       systemPrompt: r.systemPrompt,
@@ -221,6 +236,8 @@ function rolesToYaml(roles: RoleConfig[]): string {
       color: r.color
     }
   }
+  // lineWidth: 120 keeps the JSON-ish fields compact, but YAML.stringify
+  // respects block scalars (`|`) for systemPrompt regardless of lineWidth.
   return YAML.stringify(obj, { indent: 2, lineWidth: 120 })
 }
 
@@ -238,12 +255,6 @@ function writeIfMissing(filePath: string, content: string): void {
   }
 }
 
-function writePromptIfMissing(filePath: string, content: string): void {
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, content, 'utf8')
-  }
-}
-
 function backupAndRebuild(brokenPath: string, fresh: string): void {
   try {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
@@ -252,13 +263,6 @@ function backupAndRebuild(brokenPath: string, fresh: string): void {
     /* best effort */
   }
   fs.writeFileSync(brokenPath, fresh, 'utf8')
-}
-
-/** Write the built-in prompt templates; only creates files that don't exist */
-function seedPrompts(dir: string): void {
-  ensureDir(promptsDir(dir))
-  writePromptIfMissing(path.join(promptsDir(dir), 'Plan.md'), PLAN_PROMPT_MD)
-  writePromptIfMissing(path.join(promptsDir(dir), 'Worker.md'), WORKER_PROMPT_MD)
 }
 
 // -----------------------------------------------------------------------------
@@ -290,7 +294,6 @@ export function loadConfig(): ConfigBundle {
   // ----- roles.yaml -----
   if (!fs.existsSync(rolesPath(dir))) {
     fs.writeFileSync(rolesPath(dir), DEFAULT_ROLES_YAML, 'utf8')
-    seedPrompts(dir)
   }
   let roles: RoleConfig[] = []
   try {
@@ -298,30 +301,35 @@ export function loadConfig(): ConfigBundle {
   } catch (err) {
     console.error('[config] roles.yaml unreadable, rebuilding defaults:', err)
     backupAndRebuild(rolesPath(dir), DEFAULT_ROLES_YAML)
-    seedPrompts(dir)
     roles = rolesFromYaml(DEFAULT_ROLES_YAML)
   }
 
-  // Migration: existing v2.0 users still have lowercase `plan` / `worker`
-  // ids from the earlier default. Capitalize them in-place so the rest of
-  // the app can rely on the canonical `Plan` / `Worker` names.
-  const migrated = roles.map((r) => {
-    if (r.id === 'plan') return { ...r, id: 'Plan', label: r.label || '🧠 Plan' }
-    if (r.id === 'worker') return { ...r, id: 'Worker', label: r.label || '⚙️ Worker' }
-    return r
-  })
-  if (migrated.some((r, i) => r.id !== roles[i].id)) {
-    try {
-      fs.writeFileSync(rolesPath(dir), rolesToYaml(migrated), 'utf8')
-      roles = migrated
-      console.log('[config] Migrated role ids plan→Plan, worker→Worker')
-    } catch (err) {
-      console.error('[config] role id migration write failed:', err)
+  // Migration: if any role still has a `label` field (the old `id + label`
+  // dual-name schema) or a path-style `systemPrompt`, the round-trip above
+  // already inlined the prompt content. We just need to write back so the
+  // YAML on disk reflects the new schema (single `name` field, inline
+  // systemPrompt). Idempotent — safe to run every startup.
+  const yamlOnDisk = fs.readFileSync(rolesPath(dir), 'utf8')
+  const doc = (YAML.parse(yamlOnDisk) ?? {}) as RolesYaml
+  let dirty = false
+  for (const id of Object.keys(doc)) {
+    const entry = doc[id] as Record<string, unknown>
+    if ('label' in entry) { delete (entry as any).label; dirty = true }
+    if (typeof entry.systemPrompt === 'string' && looksLikePromptPath(entry.systemPrompt)) {
+      // Re-derive from the in-memory `roles` (which already ran rolesFromYaml,
+      // so the inlined content is in there). Write back as block scalar via
+      // rolesToYaml.
+      dirty = true
     }
   }
-
-  // Make sure the prompts directory exists even if the user supplied roles.yaml manually
-  seedPrompts(dir)
+  if (dirty) {
+    try {
+      fs.writeFileSync(rolesPath(dir), rolesToYaml(roles), 'utf8')
+      console.log('[config] Migrated roles.yaml → single-name schema, inline systemPrompt')
+    } catch (err) {
+      console.error('[config] role schema migration write failed:', err)
+    }
+  }
 
   cached = { models, roles, configDir: dir }
   return cached
@@ -346,14 +354,13 @@ export function saveRoles(roles: RoleConfig[]): void {
 }
 
 /**
- * Replace roles.yaml with the built-in defaults. Prompts and models are left
- * untouched so user edits survive a Reset.
+ * Replace roles.yaml with the built-in defaults. Models are left untouched so
+ * user edits to API keys / base URLs survive a Reset.
  */
 export function resetRoles(): ConfigBundle {
   const dir = configDir()
   ensureDir(dir)
   fs.writeFileSync(rolesPath(dir), DEFAULT_ROLES_YAML, 'utf8')
-  seedPrompts(dir)
   invalidate()
   return loadConfig()
 }

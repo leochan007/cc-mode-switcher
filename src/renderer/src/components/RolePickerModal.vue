@@ -15,8 +15,7 @@
             :disabled="!r.model"
             @click="onSelect(r.id)"
           >
-            <span class="row-label">{{ r.label }}</span>
-            <span class="row-id">({{ r.id }})</span>
+            <span class="row-label">{{ r.id }}</span>
             <span v-if="!r.model" class="row-warn">{{ t('picker.noModel') }}</span>
             <span v-else class="row-model">{{ modelName(r.model) }}</span>
           </button>

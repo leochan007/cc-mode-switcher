@@ -172,14 +172,17 @@ function nextRoleColor(existing: RoleConfig[]): string {
 }
 
 // ----- roles -----
-  async function addRole(partial?: Partial<RoleConfig>): Promise<RoleConfig> {
-    const id = partial?.id?.trim() || `role-${genId().slice(0, 8)}`
+  async function addRole(id: string, partial?: Omit<Partial<RoleConfig>, 'id' | 'label'>): Promise<RoleConfig> {
+    const trimmed = id.trim()
+    if (!trimmed) throw new Error('Role name is required')
+    if (roles.value.some((r) => r.id === trimmed)) {
+      throw new Error(`Role "${trimmed}" already exists`)
+    }
     const role: RoleConfig = {
-      id,
-      label: partial?.label ?? id,
+      id: trimmed,
       model: partial?.model ?? '',
       thinking: partial?.thinking ?? false,
-      systemPrompt: partial?.systemPrompt ?? `~/.cc-mode-switcher/prompts/${id}.md`,
+      systemPrompt: partial?.systemPrompt ?? '',
       disallowedPlugins: partial?.disallowedPlugins ?? ['superpowers'],
       allowedTools: partial?.allowedTools ?? [],
       disallowedTools: partial?.disallowedTools ?? [],
@@ -222,11 +225,10 @@ function nextRoleColor(existing: RoleConfig[]): string {
     const i = roles.value.findIndex((r) => r.id === id)
     if (i === -1) return null
     const src = roles.value[i]
+    const newId = uniqueCopyId(src.id)
     const copy: RoleConfig = {
       ...src,
-      id: `${src.id}-copy`,
-      label: `${src.label} copy`,
-      systemPrompt: src.systemPrompt.replace(/\/([^/]+)\.md$/, `/$1-copy.md`),
+      id: newId,
       color: nextRoleColor([...roles.value])
     }
     const arr = [...roles.value]
@@ -235,6 +237,14 @@ function nextRoleColor(existing: RoleConfig[]): string {
     const bundle = await window.electronAPI.saveRoles(plain(roles.value))
     roles.value = bundle.roles
     return copy
+  }
+
+  function uniqueCopyId(base: string): string {
+    const taken = (id: string) => roles.value.some((r) => r.id === id)
+    if (!taken(`${base}-copy`)) return `${base}-copy`
+    let n = 1
+    while (taken(`${base}-copy-${n}`)) n++
+    return `${base}-copy-${n}`
   }
 
   // ----- yaml view -----

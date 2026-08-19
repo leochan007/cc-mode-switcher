@@ -183,7 +183,7 @@ export function buildLaunchScripts(opts: {
     const json = settingsJsonFor(model, role.thinking)
     const shellSafe = json.replace(/'/g, `'\\''`)
     const settingsPath = `$HOME/.cc-mode-switcher/.launch-cache/${role.id}.json`
-    lines.push(`# ── ${role.label} (${role.id}) ──`)
+    lines.push(`# ── ${role.id} ──`)
     lines.push(`CC_MS_SETTINGS_FILE_${role.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}="${settingsPath}"`)
     lines.push(`mkdir -p "$(dirname "${settingsPath}")"`)
     lines.push(`printf '%s' '${shellSafe}' > "${settingsPath}"`)

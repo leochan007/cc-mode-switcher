@@ -158,9 +158,8 @@ export function useSessions() {
     const cwd = opts.cwd || '~'
     const title = tabTitleFor(cwd)
 
-    const promptContent = role.systemPrompt
-      ? await window.electronAPI.readTextFile(role.systemPrompt)
-      : ''
+    // systemPrompt is inline content now — no file I/O needed.
+    const promptContent = role.systemPrompt ?? ''
 
     const tabId = genTabId()
     tabs.value.push({
