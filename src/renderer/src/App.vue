@@ -118,6 +118,7 @@ import ConfirmModal from './components/ConfirmModal.vue'
 import ToastHost from './components/ToastHost.vue'
 import ModelsPanel from './components/ModelsPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
+import { getDefaultCwd, setDefaultCwd } from './composables/useDefaultCwd'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -172,6 +173,7 @@ watch(roles, (v) => {
 const CWD_HISTORY_KEY = 'cc_workspace_cwd_history'
 const cwd = ref<string>('')
 const cwdHistory = ref<string[]>(loadCwdHistory())
+const homeDir = ref<string>('')
 
 function loadCwdHistory(): string[] {
   try {
@@ -226,19 +228,44 @@ function pushCwd(dir: string): void {
 
 /**
  * Resolve a working directory for a new shell session.
- * Order: explicit arg > last picked cwd > home. If no history at all and the
- * user hasn't actively picked one, prompt once with the native folder picker.
+ *
+ * Per plans/004 §3.2 — 4-step decision:
+ *   1. explicit arg (cmdline / current selection)        — unchanged
+ *   2. defaultCwd (user explicitly set in Settings)      — NEW
+ *   3. cwdHistory[0] (legacy: old users without an        — kept for compat
+ *      explicit default; will not be reached on a fresh install)
+ *   4. first-run prompt: native dialog with `purpose:'default'`;
+ *      user picks → write defaultCwd; user cancels → write defaultCwd=homedir
+ *      (so the dialog is never shown twice — once prompted, always set)
  */
 async function resolveCwdForNewShell(explicit?: string): Promise<string> {
   if (explicit) return explicit
+
+  const def = getDefaultCwd()
+  if (def && def.length > 0) return def
+
+  // Legacy: history-only path (no explicit default yet — old users)
   if (cwdHistory.value.length > 0) return cwdHistory.value[0]
-  const picked = await window.electronAPI.selectDirectory()
-  return picked ?? ''
+
+  // First-run / never-set: trigger the dedicated dialog
+  const picked = await window.electronAPI.selectDirectory({
+    purpose: 'default',
+    defaultCwd: ''
+  })
+  const resolved = picked ?? homeDir.value
+  if (resolved) setDefaultCwd(resolved)
+  return resolved
 }
 
 onMounted(async () => {
   await load()
   rolesYamlRaw.value = await readRolesYaml()
+  homeDir.value = await window.electronAPI.homeDir()
+
+  // Sync header display when SettingsPanel flips defaultCwd
+  watch(getDefaultCwd, (v) => {
+    if (v && v.length > 0) cwd.value = v
+  }, { immediate: true })
 
   // Wire native menu commands
   window.electronAPI.onMenuCommand((cmd, payload) => {
@@ -435,9 +462,14 @@ async function onMenuNewShellWithRoleExternal(): Promise<void> {
   pickerOpen.value = true
 }
 
-/** Folder picker → opens that dir in internal terminal (with multi-role bootstrap) */
+/** Folder picker → opens that dir in internal terminal (with multi-role bootstrap).
+ *  Per plans/004 §3.5: dialog starts at defaultCwd if set, otherwise homedir. */
 async function onMenuOpenFolder(): Promise<void> {
-  const picked = await window.electronAPI.selectDirectory()
+  const def = getDefaultCwd()
+  const picked = await window.electronAPI.selectDirectory({
+    purpose: 'oneoff',
+    defaultCwd: def && def.length > 0 ? def : ''
+  })
   if (!picked) return
   cwd.value = picked
   pushCwd(picked)
