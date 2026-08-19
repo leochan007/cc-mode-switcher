@@ -1,6 +1,6 @@
 {
   "name": "cc-mode-switcher",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "engines": {
     "node": ">=22",
     "pnpm": ">=10"
@@ -40,6 +40,7 @@
   "build": {
     "appId": "com.leochan007.cc-mode-switcher",
     "productName": "CC Mode Switcher",
+    "icon": "build/icon.png",
     "directories": {
       "output": "release"
     },
@@ -51,6 +52,7 @@
       "**/node_modules/node-pty/**/*"
     ],
     "mac": {
+      "icon": "build/icon.icns",
       "hardenedRuntime": false,
       "identity": null,
       "target": [
@@ -64,9 +66,11 @@
       "category": "public.app-category.developer-tools"
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": "nsis"
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": "AppImage"
     }
   }

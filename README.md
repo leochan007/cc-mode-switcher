@@ -1,6 +1,12 @@
-# 🎯 CC Mode Switcher
+<p align="center">
+  <img src="docs/public/images/logo.png" alt="CC Mode Switcher" width="128" />
+</p>
 
-**English** | [简体中文](README.zh-CN.md)
+<h1 align="center">CC Mode Switcher</h1>
+
+<p align="center">
+  <strong>English</strong> | <a href="README.zh-CN.md">简体中文</a>
+</p>
 
 Multi-role scheduler for [Claude Code](https://claude.com/product/claude-code). Define any number of roles (default: 🧠 **Planner** + ⚙️ **Worker**), bind a different model to each — e.g. a reasoning model for planning and a fast model for execution — then launch Claude Code in the right role from a built-in multi-tab terminal (xterm.js + node-pty) or your favourite external terminal. Tab = one role, one pty session, one tool allow / deny list.
 

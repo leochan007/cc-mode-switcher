@@ -10,6 +10,17 @@ export default defineConfig({
   // For local dev `pnpm docs:dev` serves at http://localhost:5173/cc-mode-switcher/.
   base: '/cc-mode-switcher/',
 
+  // Favicon + web manifest — all paths must include the `base` prefix above.
+  // VitePress serves files from docs/public/ at the site root (with base prepended).
+  head: [
+    ['link', { rel: 'icon', type: 'image/x-icon', href: '/cc-mode-switcher/favicon.ico' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/cc-mode-switcher/favicon-32x32.png' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/cc-mode-switcher/favicon-16x16.png' }],
+    ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/cc-mode-switcher/apple-touch-icon.png' }],
+    ['link', { rel: 'manifest', href: '/cc-mode-switcher/site.webmanifest' }],
+    ['meta', { name: 'theme-color', content: '#2DBA68' }]
+  ],
+
   // English is the site root (default); Chinese under /zh/
   // Source layout mirrors URLs directly: docs/ ↔ /, docs/guide/ ↔ /guide/,
   // docs/zh/ ↔ /zh/, docs/zh/guide/ ↔ /zh/guide/ — no rewrites needed.
@@ -25,6 +36,7 @@ export default defineConfig({
       label: 'English',
       lang: 'en',
       themeConfig: {
+        logo: { src: '/cc-mode-switcher/images/logo.png', alt: 'CC Mode Switcher' },
         nav: [
           { text: 'Download', link: '/download' },
           { text: 'Index', link: '/' },
@@ -108,6 +120,7 @@ export default defineConfig({
       label: '简体中文',
       lang: 'zh-CN',
       themeConfig: {
+        logo: { src: '/cc-mode-switcher/images/logo.png', alt: 'CC Mode Switcher' },
         nav: [
           { text: '下载', link: '/zh/download' },
           { text: '文档索引', link: '/zh/' },

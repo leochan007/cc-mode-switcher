@@ -1,6 +1,12 @@
-# 🎯 CC Mode Switcher
+<p align="center">
+  <img src="docs/public/images/logo.png" alt="CC Mode Switcher" width="128" />
+</p>
 
-[English](README.md) | **简体中文**
+<h1 align="center">CC Mode Switcher</h1>
+
+<p align="center">
+  <a href="README.md">English</a> | <strong>简体中文</strong>
+</p>
 
 [Claude Code](https://claude.com/product/claude-code) 的多角色调度器。任意定义多个角色（默认：🧠 **Planner** + ⚙️ **Worker**），分别绑定不同模型 —— 例如 Plan 用推理模型、执行用快速模型 —— 在内置的多 Tab 终端（xterm.js + node-pty）或你常用的外部终端中一键以正确的角色启动 Claude Code。Tab = 一个角色、一个 pty 会话、一份工具允许/禁止清单。
 

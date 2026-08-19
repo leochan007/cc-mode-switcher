@@ -1,8 +1,11 @@
 <template>
   <header class="header">
-    <div>
-      <h1>🎯 {{ t('app.title') }}</h1>
-      <p>{{ t('app.subtitle') }}</p>
+    <div class="header-brand">
+      <img class="brand-mark" :src="logoUrl" alt="CC Mode Switcher" />
+      <div>
+        <h1>{{ t('app.title') }}</h1>
+        <p>{{ t('app.subtitle') }}</p>
+      </div>
     </div>
     <div class="header-right">
       <nav class="tabs">
@@ -36,6 +39,7 @@ import type { Tab } from '../types'
 import { useI18n } from '../composables/useI18n'
 import { useTheme } from '../composables/useTheme'
 import IconButton from './IconButton.vue'
+import logoUrl from '../assets/logo.png'
 
 defineProps<{ modelValue: Tab }>()
 defineEmits<{ (e: 'update:modelValue', tab: Tab): void }>()
@@ -59,6 +63,17 @@ const tabs: { value: Tab; key: string; icon: string }[] = [
   border-bottom: 1px solid var(--border);
   -webkit-app-region: drag;
   flex-shrink: 0;
+}
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
 }
 .header h1 { font-size: 18px; font-weight: 600; color: var(--text-strong); }
 .header p { font-size: 12px; color: var(--text-dim); margin-top: 2px; }

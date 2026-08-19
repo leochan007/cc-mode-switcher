@@ -34,12 +34,22 @@ let mainWindow: BrowserWindow | null = null
 // -----------------------------------------------------------------------------
 
 function createMainWindow(): BrowserWindow {
+  // In packaged builds electron-builder writes the .icns/.ico into the .app
+  // bundle / installer, so the OS picks up the icon automatically. In dev mode
+  // there's no bundle, so we point BrowserWindow at build/icon.png directly —
+  // this affects the Windows taskbar and Linux window list.
+  //
+  // electron-vite compiles the main process to out/main/index.js, so
+  // __dirname === <project-root>/out/main. Going up two levels reaches the
+  // project root where build/icon.png lives.
+  const devIcon = path.join(__dirname, '../../build/icon.png')
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
+    icon: devIcon,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -75,6 +85,16 @@ function createMainWindow(): BrowserWindow {
 app.whenReady().then(() => {
   // Eagerly load config so any boot-time errors surface in the main console
   loadConfig()
+
+  // macOS Dock icon in dev mode — packaged builds get this from the .app
+  // bundle's Info.plist, but `pnpm run dev` runs Electron directly without a
+  // bundle, so we set it imperatively here. No-op on Windows/Linux.
+  //
+  // __dirname === <project-root>/out/main in dev (see createMainWindow above);
+  // ../../build/icon.png resolves to <project-root>/build/icon.png.
+  if (process.platform === 'darwin' && app.dock) {
+    app.dock.setIcon(path.join(__dirname, '../../build/icon.png'))
+  }
 
   // Prune stale .launch-cache entries (rev6: shared with external terminals,
   // so cleanup policy applies uniformly). 1 day cutoff by default — by then
