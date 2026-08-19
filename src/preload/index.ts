@@ -87,6 +87,7 @@ export interface ElectronAPI {
   readRolesYaml: () => Promise<string>
   writeRolesYaml: (raw: string) => Promise<{ ok: true; bundle: ConfigBundleDTO } | { ok: false; error: string }>
   configDir: () => Promise<string>
+  homeDir: () => Promise<string>
 
   // Sessions
   createSession: (payload: {
@@ -161,6 +162,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readRolesYaml: () => ipcRenderer.invoke('config:read-roles-yaml'),
   writeRolesYaml: (raw) => ipcRenderer.invoke('config:write-roles-yaml', raw),
   configDir: () => ipcRenderer.invoke('config:dir'),
+  homeDir: () => ipcRenderer.invoke('home:dir'),
 
   createSession: (payload) => ipcRenderer.invoke('session:create', payload),
   writeSession: (id, data) => ipcRenderer.invoke('session:input', { id, data }),

@@ -477,6 +477,7 @@ ipcMain.handle(
     writeRolesYaml(raw)
 )
 ipcMain.handle('config:dir', async (): Promise<string> => configDirPath())
+ipcMain.handle('home:dir', async (): Promise<string> => app.getPath('home'))
 
 // -----------------------------------------------------------------------------
 // pty IPC (M3-T9 / M4-T13)
