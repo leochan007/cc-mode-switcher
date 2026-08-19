@@ -30,7 +30,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
     "electron": "42.0.0",
-    "electron-builder": "26.0.0",
+    "electron-builder": "26.15.3",
     "electron-vite": "^5.0.0",
     "typescript": "^5.8.0",
     "vite": "^7.0.0",
@@ -39,18 +39,23 @@
   },
   "build": {
     "appId": "com.leochan007.cc-mode-switcher",
-    "productName": "CC Mode Switcher",
+    "productName": "CC-Mode-Switcher",
     "icon": "build/icon.png",
     "directories": {
       "output": "release"
     },
+
+    "npmRebuild": false,
+
     "files": [
       "out/**/*",
       "node_modules/node-pty/**/*"
     ],
+
     "asarUnpack": [
       "**/node_modules/node-pty/**/*"
     ],
+
     "mac": {
       "icon": "build/icon.icns",
       "hardenedRuntime": false,
@@ -65,10 +70,12 @@
       ],
       "category": "public.app-category.developer-tools"
     },
+
     "win": {
       "icon": "build/icon.ico",
       "target": "nsis"
     },
+
     "linux": {
       "icon": "build/icon.png",
       "target": "AppImage"

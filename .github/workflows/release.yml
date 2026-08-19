@@ -38,10 +38,20 @@ concurrency:
 jobs:
   release:
     strategy:
+      # Don't cancel macOS/Linux when Windows fails — they should be allowed
+      # to finish so partial releases still go out. Windows builds occasionally
+      # break for environment reasons (e.g. node-gyp can't recognise VS 18 on
+      # the latest image, see the windows-2022 pin below).
+      fail-fast: false
       matrix:
         os:
           - macos-latest
-          - windows-latest
+          # Pinned to windows-2022 because the newer windows-latest (win25 /
+          # VS 18 / VS 2026) ships a Visual Studio version that the bundled
+          # node-gyp can't detect, so the native rebuild of node-pty aborts
+          # with "unknown version undefined". Re-evaluate once node-gyp catches
+          # up to VS 18 / when Electron's node-gyp fork lands VS 2026 support.
+          - windows-2022
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     outputs:
