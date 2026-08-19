@@ -10,9 +10,9 @@
 | --- | --- | --- | --- |
 | 001 | `001-multi-role-switcher.md` | **retired** @ 2026-08-19 | v2 多角色切换器全栈;17 任务全绿;git 历史 = 归档 |
 | 002 | `002-logo-replacement.md` | **retired** @ 2026-08-19 | 全栈 logo 替换(PNG-only);SVG 方案回滚后交付;git 历史 = 归档 |
-| 003 | `003-fix-config-template-literal.md` | **done** @ Phase 0 of 005 | src/main/config.ts 反引号转义;随 005 落地由 T9 自退役 |
+| 003 | `003-fix-config-template-literal.md` | **done** @ 2026-08-20(随 005 落地) | src/main/config.ts 反引号转义;落进 005 T1/T2/T8 重写一并处理 |
 | 004 | `004-default-working-directory.md` | **active** | 默认工作目录机制(与 005 并行活跃,互不冲突) |
-| 005 | `005-delivery-contract-v2.md` | **in_progress** | .cc-delivery 契约 v2:plan 库 + 当期工单 + 锁 + 结构化回执 |
+| 005 | `005-delivery-contract-v2.md` | **done** @ 2026-08-20 | .cc-delivery 契约 v2 落地:plans/ 库 + 当期工单 + status.md 协议锁 + worker_output.md 结构化回执 + planner 路径限定写权限;T5–T7 演练留给用户端 e2e |
 | — | `feedbacks/001-implementation-notes.md` | **retired** @ 2026-08-19 | 001 实现笔记随 001 同步退役;`feedbacks/` 目录随之删除 |
 
 排序规则:索引序号 = `plans/005-delivery-contract-v2.md §3.4` 中的"优先级 = 索引排序,不加字段"。新增 plan 永远取下一个未占用 NNN(无补号、无重排)。
