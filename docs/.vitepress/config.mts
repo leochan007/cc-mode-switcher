@@ -68,7 +68,8 @@ export default defineConfig({
               items: [
                 { text: '03 · Roles Playbook', link: '/guide/03-roles-playbook' },
                 { text: '04 · Worker Role Playbook', link: '/guide/04-worker-mode-playbook' },
-                { text: '05 · End-to-End Example', link: '/guide/05-workflow-example' }
+                { text: '05 · End-to-End Example', link: '/guide/05-workflow-example' },
+                { text: '08 · Role Prompt Template', link: '/guide/08-role-prompt-template' }
               ]
             },
             {
@@ -102,7 +103,8 @@ export default defineConfig({
               items: [
                 { text: '03 · Roles Playbook', link: '/guide/03-roles-playbook' },
                 { text: '04 · Worker Role Playbook', link: '/guide/04-worker-mode-playbook' },
-                { text: '05 · End-to-End Example', link: '/guide/05-workflow-example' }
+                { text: '05 · End-to-End Example', link: '/guide/05-workflow-example' },
+                { text: '08 · Role Prompt Template', link: '/guide/08-role-prompt-template' }
               ]
             },
             {
@@ -151,7 +153,8 @@ export default defineConfig({
               items: [
                 { text: '03 · 角色 Playbook', link: '/zh/guide/03-roles-playbook' },
                 { text: '04 · Worker 角色 Playbook', link: '/zh/guide/04-worker-mode-playbook' },
-                { text: '05 · 端到端示例', link: '/zh/guide/05-workflow-example' }
+                { text: '05 · 端到端示例', link: '/zh/guide/05-workflow-example' },
+                { text: '08 · 角色 Prompt 模板', link: '/zh/guide/08-role-prompt-template' }
               ]
             },
             {
@@ -184,7 +187,8 @@ export default defineConfig({
               items: [
                 { text: '03 · 角色 Playbook', link: '/zh/guide/03-roles-playbook' },
                 { text: '04 · Worker 角色 Playbook', link: '/zh/guide/04-worker-mode-playbook' },
-                { text: '05 · 端到端示例', link: '/zh/guide/05-workflow-example' }
+                { text: '05 · 端到端示例', link: '/zh/guide/05-workflow-example' },
+                { text: '08 · 角色 Prompt 模板', link: '/zh/guide/08-role-prompt-template' }
               ]
             },
             {
