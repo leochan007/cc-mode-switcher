@@ -25,7 +25,9 @@ macOS / Windows / Linux 安装包发布在 **[GitHub Releases → 最新版](htt
                 ┌──────────────┐  plan_output.md  ┌──────────────┐
    需求 ────▶   │  Plan 角色   │ ───────────────▶ │ Worker 角色  │ ──▶ 交付
                 │ (推理,只读) │  (.cc-delivery/    │ (执行,      │
-                │              │   单一事实源)      │  写+测试)   │
+                │              │   plan + status   │  写+测试,   │
+                │              │   锁 + worker_    │  status 锁  │
+                │              │   output 回执)    │  取+释)     │
                 └──────────────┘                   └──────────────┘
                       ▲                                  │
                       └──── 发现 plan 缺口回来修订 ──────┘
@@ -33,6 +35,6 @@ macOS / Windows / Linux 安装包发布在 **[GitHub Releases → 最新版](htt
 
 - **角色一等公民**:不是 Plan/Work 二选一,而是任意多角色(出厂预置 Plan + Worker,你可任意增删改),每个有自己的模型、提示词、thinking、工具黑白名单。
 - **一个会话 = 一个角色**:会话创建时把角色参数快照进 pty,改配置不影响已开 Tab。
-- **`.cc-delivery/plan_output.md` 是跨角色边界的唯一事实源**:Plan 写、Worker 读;没有 IPC,没有共享上下文,只是一个磁盘文件。
+- **`.cc-delivery/plan_output.md` 是契约**:Plan 写、Worker 读;`status.md` 携带协议锁(owner + heartbeat)做协议级互斥;`worker_output.md` 是结构化回执日志。无 IPC、无共享上下文,只是磁盘上的文件。
 - **人是审批者**:plan 文档生成后由你 review,通过后才交给 Worker 执行。
 - **对你的环境零侵入**:`~/.claude/settings.json` 不碰、`~/.zshrc` 不碰,所有配置在 `~/.cc-mode-switcher/` 下。

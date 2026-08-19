@@ -25,8 +25,10 @@ macOS / Windows / Linux installers live on **[GitHub Releases → latest](https:
                 ┌──────────────┐  plan_output.md  ┌──────────────┐
    Need ────▶   │  Plan role   │ ───────────────▶ │ Worker role  │ ──▶ Delivery
                 │ (reasoning,  │  (.cc-delivery/    │ (execution,  │
-                │  read-only)  │   single source    │  write+test) │
-                └──────────────┘   of truth)        └──────────────┘
+                │  read-only)  │   plan + status    │  write+test, │
+                │              │   lock + worker_   │  status lock │
+                │              │   output receipts) │  acquire+rel)│
+                └──────────────┘                   └──────────────┘
                       ▲                                  │
                       └──── come back to revise ────────┘
                            when the plan has gaps
@@ -34,6 +36,6 @@ macOS / Windows / Linux installers live on **[GitHub Releases → latest](https:
 
 - **Roles are first-class**: not a Plan/Work toggle, but any number of roles (Plan + Worker ship as defaults, add / delete / rename freely), each with its own model, system prompt, thinking budget, and tool allow/deny list.
 - **One session = one role**: parameters are snapshotted into the pty at session creation; config changes affect only new sessions.
-- **`.cc-delivery/plan_output.md` is the single source of truth across roles**. Plan writes, Worker reads. No IPC, no shared context — just a file on disk.
+- **`.cc-delivery/plan_output.md` is the contract**. Plan writes, Worker reads. `status.md` carries a protocol lock (owner + heartbeat) for advisory mutex; `worker_output.md` is the structured receipt log. No IPC, no shared context — just files on disk.
 - **Humans are the approver**. You flip `Status: approved` after reviewing the plan before Worker is allowed to touch anything.
 - **Zero-touch on your environment**. `~/.claude/settings.json` is never read or written; `~/.zshrc` is never touched. All config lives under `~/.cc-mode-switcher/`.

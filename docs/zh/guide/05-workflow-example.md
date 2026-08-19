@@ -51,7 +51,7 @@ task breakdown with files / out of scope / acceptance criteria / risks).
 Anything uncertain becomes an OPEN QUESTION — don't guess.
 ```
 
-Plan 会话读代码,需要的话问你澄清,最后写 `.cc-delivery/plan_output.md`,以 `PLAN_READY: please launch the Worker role on this plan.` 结尾。
+Plan 会话读代码,需要的话问你澄清,最后写 `.cc-delivery/plan_output.md`,以 `PLANNER_READY: <一句话摘要>` 结尾。它退出时还会把 `.cc-delivery/status.md.lock.owner` 设成 `"planner"`,告诉 Worker plan 是新鲜的。
 
 ### 1.4 人审
 
@@ -92,10 +92,11 @@ OK:把 `Status:` 行翻成 `approved`。不行:在 Plan 会话里发追问,它�
 
 Worker prompt 强制:
 
-1. **读 `.cc-delivery/plan_output.md`** —— 不存在就 `NO_PLAN:` 退出。
-3. 逐项实现。
-4. 追加里程碑到 `.cc-delivery/worker_report.md`。
-5. 末尾 `WORK_DONE:`。
+1. **读 `.cc-delivery/plan_output.md`** —— 不存在就 `WORKER_NO_PLAN:` 退出。
+2. **检查 `.cc-delivery/status.md.lock.owner`** —— 如果非空且不是 `"worker"`,输出 `WORKER_BLOCKED: 锁被 <owner> 持有` 退出。否则获取锁。
+3. 逐项实现,长写入前刷新 `status.md.lock.heartbeat_at`。
+4. 每完成一段追加一行回执到 `.cc-delivery/worker_output.md`(格式:`## <task-id> — done|in_progress|blocked @ <ISO>`)。
+5. **释放锁**(`status.md.lock.owner: ""`),末尾 `WORKER_DONE:`。
 
 不用盯着 —— 四层隔离保证它改不了 plan 文件、开不了 Superpowers、它被允许的工具只限于 plan 涉及的范围。
 
@@ -104,9 +105,9 @@ Worker prompt 强制:
 Worker 撞上 plan 里的一个 `OPEN QUESTION`(比如"脱敏格式:`***` vs `<REDACTED>` vs 完全省略?")。它:
 
 1. 停当前任务。
-2. 追加到 `.cc-delivery/worker_report.md`:
+2. 追加 `blocked` 回执到 `.cc-delivery/worker_output.md`:
    ```
-   ## Open question
+   ## T2 — blocked @ 2026-08-20T11:00:00+08:00
 
    T2(脱敏):plan 问 export 时 apiKey 怎么脱敏。建议 `***REDACTED***`(匹配同类工具的惯例)。等拍板。
    ```
@@ -117,18 +118,19 @@ Worker 撞上 plan 里的一个 `OPEN QUESTION`(比如"脱敏格式:`***` vs `<R
 
 ## 第 5 步 · 验收
 
-Worker 说 `WORK_DONE: all plan items implemented.` 你验收:
+Worker 说 `WORKER_DONE: 导出/导入上线,锁已释放。` 你验收:
 
 - Settings → Export / Import 出现新按钮。
 - Export → 生成 JSON,每个模型的 `apiKey` 是 `***REDACTED***`。
 - Import → 拿队友的 export 进来 → 显示 diff,覆盖前弹确认。
 - 取消 import 后原有角色 / 模型完好。
+- `.cc-delivery/status.md.lock.owner === ""`(Worker 已释放锁)。
 
 ## 第 6 步 · 收尾
 
 - 关 Worker Tab(右键 → Close)。
 - 分离的 Plan Tab 留着参考 —— 啥时候关都行。
-- `~/.cc-delivery/plan_output.md` 和 `worker_report.md` 留在磁盘上,作为本次交付的审计轨迹。
+- `~/.cc-delivery/plan_output.md` + `status.md` + `worker_output.md` 留在磁盘上,作为本次交付的审计轨迹。
 
 ## 使用的快捷键
 
@@ -144,5 +146,5 @@ Worker 说 `WORK_DONE: all plan items implemented.` 你验收:
 ## 变体
 
 - **外部终端**:同样的流程,但用启动面板里的 `▶ Open in Terminal` 开 Terminal.app 而不是内部 Tab。`cc-<角色>` alias 行为一致。
-- **多个并行 Worker**:开任意多 Worker Tab —— 它们看同一份 `plan_output.md`,每个各追加 `worker_report.md` 自己的 header。不要让它们同时动重叠的文件。
+- **多个并行 Worker**:开任意多 Worker Tab —— 它们看同一份 `plan_output.md`,每个各追加 `worker_output.md` 自己的 task-id 前缀。`status.md` 锁是协议锁(荣誉系统互斥) —— 同一时间只让一个 Worker 持有。不要让它们同时动重叠的文件。
 - **自定义角色**:加 `test-runner` 角色(只读 + Bash + 限定测试路径)、`security-audit` 角色(只读 + Grep + Glob)等。每个就是表格里的又一行。

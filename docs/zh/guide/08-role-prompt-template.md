@@ -92,57 +92,55 @@ WORKER_BLOCKED: §4 第 3 项引用了一个已删除文件，需要 Planner 复
 | 文件 | Owner | 其他角色 |
 | --- | --- | --- |
 | `plan_output.md` | **Planner** | 其他人只读 |
-| `worker_report.md` | **Worker**（append-only） | 其他人只读 |
-| `decisions.md` | 任何角色（append-only） | 其他人只读 |
-| `status.md` | 任何角色（替换 JSON 块） | 其他人只读 |
+| `worker_output.md` | **Worker**（append-only） | 其他人只读（原 `worker_report.md`，v2 改名） |
+| `status.md` | 任何角色（替换 JSON 块；`lock` 字段调解所有权） | 其他人只读 |
+| `plans/NNN-*.md`、`plans/README.md` | **Planner** | 其他人只读（v2 plan 库） |
 
 ### 所有权规则
 
-- **写**一个文件，只有你是它的 owner（`status.md` / `decisions.md` 除外，这两个是共享的）。
-- **Append** 到 `worker_report.md` / `decisions.md` —— 永远不覆盖。
-- **Replace** `status.md` 中的整个 JSON 块 —— 永远不部分编辑它。
-- **永远不要**写 `plan_output.md`，除非你是 Planner。如果 plan 需要修改，通过 `worker_report.md` 提出，并发出 `WORKER_BLOCKED`。
+- **写**一个文件，只有你是它的 owner（`status.md` 除外，靠锁共享）。
+- **Append** 到 `worker_output.md` —— 永远不覆盖。格式：`## <task-id> — done|in_progress|blocked @ <ISO>`。
+- **Replace** `status.md` 中的整个 JSON 块 —— 永远不部分编辑它。每次写入刷新 `lock.heartbeat_at`；完成时释放（`lock.owner: ""`）。
+- **开工前先获取锁**：如果 `status.md.lock.owner` 非空且不是你，发你的 `<ROLE>_BLOCKED` 信号并停下来。（协议锁，荣誉系统，不是 OS 级互斥。）
+- **永远不要**写 `plan_output.md`，除非你是 Planner。如果 plan 需要修改，通过 `worker_output.md` 提出，并发出 `WORKER_BLOCKED`。
+- v2 **没有** `retired/` 目录 —— 覆盖旧 plan 直接覆写 `plan_output.md`，并 bump `status.md.phase` 留痕。
 
 ### 不对称 territory 规则（用于 Plan ↔ Worker handoff）
 
 当两个角色是 **生产者/消费者**关系时，把文件空间看成**两个 territory**：
 
-|  | plan-class 文件（`.cc-delivery/*`） | 非 plan 文件（项目源码） |
+|  | plan-class 文件（`.cc-delivery/*` + `plans/`） | 非 plan 文件（项目源码） |
 | --- | --- | --- |
-| **Planner** | 完全控制（读 / 写 / retire） | **只读** |
-| **Worker** | **只读**（自己拥有的几个除外） | 完全控制（按 plan §4） |
+| **Planner** | 完全控制（读 / 写 / 覆盖） | **只读** |
+| **Worker** | **只读**（自己拥有的：`worker_output.md`、`status.md.lock`） | 完全控制（按 plan §4） |
 
 用人话说：
 
-- **Planner 只能在 `.cc-delivery/` 内写**。不能碰项目源码 —— 那是 Worker 的 territory。
-- **Worker 只能写 `plan_output.md` §4 列出来的文件**。不能碰其他 plan-class 文件（`plan_output.md` 本身、其他人的报告、`retired/*` 等）。
+- **Planner 只能在 `.cc-delivery/` 和 `plans/` 内写**。不能碰项目源码 —— 那是 Worker 的 territory。
+- **Worker 只能写 `plan_output.md` §4 列出来的文件，加上 `worker_output.md`（append）和 `status.md.lock`（刷新 / 释放）**。不能碰 `plan_output.md`、`plans/` 或其他 plan-class 文件。
 
 这种**不对称就是契约**。每个角色对自己的 deliverable 有完全控制权，对方的只有只读权限。即使技术上能"方便地"越界，越界就是违约。每个角色 prompt 的 `## 4 Tools / Constraints` 里都要明确写自己的 territory 表。
 
-**Retire 模式**（Planner 侧）：Planner 没有 `Bash`，所以"删除"旧 plan = 把它的内容写到 `.cc-delivery/retired/plan-<ISO>.md`（首行 `RETIRED: <原因>`），然后覆盖 active 文件。App 永远不物理删除；`.cc-delivery/retired/*` 留给人（或未来的 cleanup 工具）处理。
-
-### `status.md` schema
+### `status.md` schema（v2 —— 协议锁）
 
 `status.md` 顶部有一个 JSON 块（带 `json` 语言提示）。每次更新替换整个块：
 
 ```json
 {
-  "current_role": "<最后行动的角色>",
-  "phase": "<completed | implementing | blocked | …>",
-  "last_signal": "<ROLE>_<STATE>",
-  "plan_path": "<plan_output.md 路径（如 Planner 已跑）>",
+  "lock": {"owner": "planner" | "worker" | "", "heartbeat_at": "<ISO 8601>"},
+  "current_plan": "plans/NNN-…md",
+  "phase": "<当前 phase>",
   "milestones_done": 0,
-  "milestones_total": 0,
-  "updated_at": "<ISO 8601 时间戳>"
+  "milestones_total": 0
 }
 ```
 
 字段含义：
-- `current_role` — 产生此状态的角色
-- `phase` — 粗粒度状态（`completed` / `implementing` / `blocked`），允许角色特定 phase
-- `last_signal` — 最近一次响应的终止信号
-- `milestones_done` / `milestones_total` — 仅 Worker 进度；其他角色省略
-- `updated_at` — ISO 8601 UTC，例如 `2026-08-19T16:45:00Z`
+- `lock.owner` —— `""`（空闲）、`"planner"` 或 `"worker"`；当前 handoff 的持有者
+- `lock.heartbeat_at` —— ISO 8601；持有者每次写入刷新。陈旧（>30 分钟）锁可由 Planner 强制释放，并在 `worker_output.md` 留痕。
+- `current_plan` —— 当前在执行哪份 `plans/NNN-…md`
+- `phase` —— 粗粒度状态（`completed` / `implementing` / `blocked` 等）；允许角色特定 phase
+- `milestones_done` / `milestones_total` —— 仅 Worker 进度；其他角色省略
 
 ---
 
@@ -189,9 +187,10 @@ WORKER_BLOCKED: §4 第 3 项引用了一个已删除文件，需要 Planner 复
 Worker 的 prompt 明确告诉它：
 - 读 `plan_output.md`
 - 如果缺失或缺 §4 → emit `WORKER_NO_PLAN`
-- 逐条执行 §4
-- 每个里程碑 append 到 `worker_report.md`
-- 结尾 emit `WORKER_DONE`
+- 检查 `status.md.lock.owner`；空闲则获取（协议互斥）
+- 逐条执行 §4；长写入前刷新 `heartbeat_at`
+- 每个回执追加到 `worker_output.md`（v2 格式：每个 task 一行）
+- 释放锁 + 结尾 `WORKER_DONE`
 
 两个 prompt 引用**相同的文件路径**、**相同的 schema**、**相同的信号** —— 这就是 contract。
 

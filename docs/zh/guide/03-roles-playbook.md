@@ -38,23 +38,27 @@ v1 时代只有 Plan / Worker —— 两个角色、固定双栏 UI。v2 翻转�
 
 不管你定义什么角色,同一套纪律适用:**让角色的产出位置显式,跨角色边界只通过磁盘文件**。
 
-### `.cc-delivery` 契约
+### `.cc-delivery` 契约(v2 — 2026-08-19 生效)
 
-针对标准 Plan ↔ Worker 流程,两边 prompt 都写到项目里的固定位置:
+针对标准 Plan ↔ Worker 流程,两边 prompt 都写到项目里的固定位置。契约 v2 引入了协议锁,并把 worker 日志文件改名:
 
 ```
 <你的项目>/.cc-delivery/
-├── plan_output.md    ← Plan 写这里
-└── worker_report.md  ← Worker 边干边追加
+├── plan_output.md     ← Plan 写这里(活跃 plan)
+├── status.md          ← 协议锁(owner + heartbeat)—— 两边角色都更新 JSON 块
+└── worker_output.md   ← Worker 追加结构化回执(原:worker_report.md)
 ```
 
 - **Plan 唯一产出**:`.cc-delivery/plan_output.md` —— 架构 / 每个文件改动清单 / 风险 / 验收标准。**不含完整业务代码块**。
-- **Plan 退出信号**:回复末尾写 `PLAN_READY: please launch the Worker role on this plan.`。
-- **Worker 第一动作**:读 `.cc-delivery/plan_output.md`。如果不存在,停下来告警 `NO_PLAN: please run the Planner role first.`。
-- **Worker 里程碑**:每完成一段就追加到 `.cc-delivery/worker_report.md`。
-- **Worker 退出信号**:回复末尾写 `WORK_DONE: all plan items implemented.`。
+- **Plan 退出信号**:回复末尾写 `PLANNER_READY: <一句话摘要>`。
+- **Worker 第一动作**:读 `.cc-delivery/plan_output.md`。如果不存在,停下来告警 `WORKER_NO_PLAN: 请先跑 Planner 角色。`。
+- **Worker 第二动作**:检查 `.cc-delivery/status.md` 的 `lock.owner` —— 如果非空且不是 `"worker"`,输出 `WORKER_BLOCKED: 锁被 <owner> 持有` 并停下来。否则获取锁(`"worker"` + `heartbeat_at`)。
+- **Worker 里程碑**:每完成一段就追加一行回执到 `.cc-delivery/worker_output.md`(格式:`## <task-id> — done|in_progress|blocked @ <ISO>`)。
+- **Worker 退出信号**:回复末尾写 `WORKER_DONE: <一句话摘要>` **并释放锁**(`status.md.lock.owner: ""`)。
 
-字面退出信号方便人(和其他工具)判断何时切角色 —— 在会话记录里搜 `PLAN_READY:` / `WORK_DONE:` 即可。
+字面退出信号方便人(和其他工具)判断何时切角色 —— 在会话记录里搜 `PLANNER_READY:` / `WORKER_DONE:` 即可。
+
+**锁语义(协议锁,非硬互斥):** 这是一个荣誉系统协议 —— 两边角色进入时都检查锁,写入前刷新 `heartbeat_at`。陈旧锁(>30 分钟没有心跳)可由 Planner 强制释放,并在下一条 `worker_output.md` 回执中留痕。
 
 ### 跨角色纪律
 
@@ -100,8 +104,8 @@ v1 时代只有 Plan / Worker —— 两个角色、固定双栏 UI。v2 翻转�
 
 角色会话"完成"以它的 prompt 退出信号为准:
 
-- Plan:`PLAN_READY: please launch the Worker role on this plan.`(且 `plan_output.md` 完整无 `OPEN QUESTION`)
-- Worker:`WORK_DONE: all plan items implemented.`
+- Plan:`PLANNER_READY: <一句话摘要>`(且 `plan_output.md` 完整无 `OPEN QUESTION`)
+- Worker:`WORKER_DONE: <一句话摘要>`(且 `status.md` 锁已释放)
 - 自定义角色:在自己的 prompt 里定义;人审。
 
 下一步:读 [04 · Worker 角色 Playbook](04-worker-mode-playbook.md) 看执行侧,或者跳到 [05 · 端到端示例](05-workflow-example.md) 看实际跑通。

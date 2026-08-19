@@ -51,7 +51,7 @@ task breakdown with files / out of scope / acceptance criteria / risks).
 Anything uncertain becomes an OPEN QUESTION — don't guess.
 ```
 
-The Plan session reads the codebase, asks you for clarifications if needed, and eventually writes `.cc-delivery/plan_output.md` ending in `PLAN_READY: please launch the Worker role on this plan.`.
+The Plan session reads the codebase, asks you for clarifications if needed, and eventually writes `.cc-delivery/plan_output.md` ending in `PLANNER_READY: <one-line summary>`. It also sets `.cc-delivery/status.md.lock.owner = "planner"` on its way out so Worker knows the plan is fresh.
 
 ### 1.4 Human review
 
@@ -92,10 +92,11 @@ A new internal xterm tab opens with the Worker bootstrap. Type `cc-worker`.
 
 The Worker prompt enforces:
 
-1. **Read `.cc-delivery/plan_output.md`** — if missing, abort with `NO_PLAN:`.
-2. Implement, file by file.
-3. Append milestones to `.cc-delivery/worker_report.md`.
-4. End with `WORK_DONE:` when done.
+1. **Read `.cc-delivery/plan_output.md`** — if missing, abort with `WORKER_NO_PLAN:`.
+2. **Check `.cc-delivery/status.md.lock.owner`** — if non-empty and not `"worker"`, abort with `WORKER_BLOCKED: lock held by <owner>`. Otherwise acquire the lock.
+3. Implement, file by file. Refresh `status.md.lock.heartbeat_at` before long writes.
+4. Append a one-line receipt per milestone to `.cc-delivery/worker_output.md` (schema: `## <task-id> — done|in_progress|blocked @ <ISO>`).
+5. **Release the lock** (`status.md.lock.owner: ""`) and end with `WORKER_DONE:`.
 
 You don't need to babysit — the four-layer isolation guarantees it can't edit the plan file, can't enable Superpowers, and the tools it's allowed to use are scoped to what the plan said to touch.
 
@@ -104,12 +105,11 @@ You don't need to babysit — the four-layer isolation guarantees it can't edit 
 Worker hits one of the `OPEN QUESTION`s in the plan (say, "redaction format: `***` vs `<REDACTED>` vs full omission?"). It:
 
 1. Stops the current task.
-2. Appends to `.cc-delivery/worker_report.md`:
+2. Appends a `blocked` receipt to `.cc-delivery/worker_output.md`:
    ```
-   ## Open question
-
+   ## T2 — blocked @ 2026-08-20T11:00:00+08:00
    T2 (redaction): plan asks how to redact apiKey in export. Suggesting
-   `***REDACTED***` (matches conventions in similar tools). Awaiting human call.
+   `***REDACTED***` (matches conventions in similar tools). Awaiting Planner / human call.
    ```
 3. Tells you in the chat.
 4. Waits.
@@ -118,18 +118,19 @@ You reply: "Use `***REDACTED***`. Continue." Worker resumes.
 
 ## Step 5 · Verify
 
-Worker says `WORK_DONE: all plan items implemented.` You verify:
+Worker says `WORKER_DONE: export/import shipped; lock released.` You verify:
 
 - The new buttons appear in Settings → Export / Import.
 - Export → produces a JSON with `apiKey: "***REDACTED***"` for every model.
 - Import → with a teammate's export → shows diff, prompts before overwriting.
 - Existing roles / models are intact if you cancel the import.
+- `.cc-delivery/status.md.lock.owner === ""` (Worker released the lock).
 
 ## Step 6 · Tidy up
 
 - Close the Worker tab (right-click → Close).
 - The detached Plan tab stays open for reference — close it whenever.
-- `~/.cc-delivery/plan_output.md` and `worker_report.md` stay on disk as the audit trail of this delivery.
+- `~/.cc-delivery/plan_output.md` + `status.md` + `worker_output.md` stay on disk as the audit trail of this delivery.
 
 ## Shortcuts used
 
@@ -145,5 +146,5 @@ Worker says `WORK_DONE: all plan items implemented.` You verify:
 ## Variations
 
 - **External terminal**: same flow, but `▶ Open in Terminal` (in the Launch Panel) opens Terminal.app instead of an internal tab. The `cc-<role>` aliases work the same way.
-- **Multiple parallel Workers**: open as many Worker tabs as you want — they all see the same `plan_output.md`, each appends to `worker_report.md` with its own header. Don't run them on overlapping files at the same time.
+- **Multiple parallel Workers**: open as many Worker tabs as you want — they all see the same `plan_output.md`, each appends to `worker_output.md` with its own task-id prefix. The `status.md` lock is advisory (honor-system mutex) — only one Worker should hold it at a time. Don't run them on overlapping files at the same time.
 - **Custom roles**: add a `test-runner` role (read + Bash + test paths only), a `security-audit` role (read + Grep + Glob only), etc. Each one is just another row in the table.

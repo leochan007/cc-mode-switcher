@@ -92,57 +92,55 @@ The `.cc-delivery/` directory in your project cwd is the **shared workspace** fo
 | File | Owner | Other roles |
 | --- | --- | --- |
 | `plan_output.md` | **Planner** | read-only for everyone else |
-| `worker_report.md` | **Worker** (append-only) | read-only for everyone else |
-| `decisions.md` | any role (append-only) | read-only for everyone else |
-| `status.md` | any role (replace the JSON block) | read-only for everyone else |
+| `worker_output.md` | **Worker** (append-only) | read-only for everyone else (was: `worker_report.md`, renamed in v2) |
+| `status.md` | any role (replace the JSON block; `lock` field mediates ownership) | read-only for everyone else |
+| `plans/NNN-*.md`, `plans/README.md` | **Planner** | read-only for everyone else (v2 plan library) |
 
 ### Ownership rules
 
-- **Write** to a file only if you are its owner (or `status.md` / `decisions.md`, which are shared).
-- **Append** to `worker_report.md` / `decisions.md` — never overwrite.
-- **Replace** the entire JSON block in `status.md` — never partially edit it.
-- **Never** write to `plan_output.md` if you are not Planner. If the plan needs revision, surface it via `worker_report.md` and emit `WORKER_BLOCKED`.
+- **Write** to a file only if you are its owner (or `status.md`, which is shared via lock).
+- **Append** to `worker_output.md` — never overwrite. Schema: `## <task-id> — done|in_progress|blocked @ <ISO>`.
+- **Replace** the entire JSON block in `status.md` — never partially edit it. Refresh `lock.heartbeat_at` on each write; release (`lock.owner: ""`) on completion.
+- **Acquire the lock** before any work: if `status.md.lock.owner` is non-empty and not yours, emit your `<ROLE>_BLOCKED` signal and stop. (Advisory mutex — honor-system, not OS-level.)
+- **Never** write to `plan_output.md` if you are not Planner. If the plan needs revision, surface it via `worker_output.md` and emit `WORKER_BLOCKED`.
+- v2 has **no** `retired/` directory — to supersede a stale plan, overwrite `plan_output.md` in place and bump `status.md.phase` to record the change.
 
 ### Asymmetric territory rule (for Plan ↔ Worker handoff)
 
 When two roles have a **producer/consumer** relationship, treat the file space as **two territories**:
 
-|  | plan-class files (`.cc-delivery/*`) | non-plan files (project source) |
+|  | plan-class files (`.cc-delivery/*` + `plans/`) | non-plan files (project source) |
 | --- | --- | --- |
-| **Planner** | full control (read / write / retire) | **read only** |
-| **Worker** | **read only** (own docs only) | full control (per plan §4) |
+| **Planner** | full control (read / write / overwrite) | **read only** |
+| **Worker** | **read only** (own docs only: `worker_output.md`, `status.md.lock`) | full control (per plan §4) |
 
 In words:
 
-- **Planner writes only inside `.cc-delivery/`.** It cannot touch project source — that's Worker's territory.
-- **Worker writes only files listed in `plan_output.md` §4.** It cannot touch other plan-class files like `plan_output.md`, `worker_report.md` (already its own but Planner reads), or `retired/*`.
+- **Planner writes only inside `.cc-delivery/` and `plans/`.** It cannot touch project source — that's Worker's territory.
+- **Worker writes only files listed in `plan_output.md` §4, plus `worker_output.md` (append) and `status.md.lock` (refresh/release).** It cannot touch `plan_output.md`, `plans/`, or other plan-class files.
 
 This **asymmetry is the contract**. Each role has full power over its own deliverables and read-only visibility of the other's. Violating it is a breach — even if the violation would be technically convenient. Document your role's territory table in `## 4 Tools / Constraints` of the role's prompt.
 
-**Retire pattern** (Planner side): since Planner has no `Bash`, "deleting" a stale plan means writing its content to `.cc-delivery/retired/plan-<ISO>.md` (first line `RETIRED: <reason>`), then overwriting the active file. The app never physically deletes; humans (or future cleanup tooling) handle `.cc-delivery/retired/*`.
-
-### `status.md` schema
+### `status.md` schema (v2 — protocol lock)
 
 `status.md` has a single JSON block (with `json` language hint) at the top. Replace the whole block on each update:
 
 ```json
 {
-  "current_role": "<which role last acted>",
-  "phase": "<completed | implementing | blocked | …>",
-  "last_signal": "<ROLE>_<STATE>",
-  "plan_path": "<path to plan_output.md if Planner ran>",
+  "lock": {"owner": "planner" | "worker" | "", "heartbeat_at": "<ISO 8601>"},
+  "current_plan": "plans/NNN-…md",
+  "phase": "<current phase>",
   "milestones_done": 0,
-  "milestones_total": 0,
-  "updated_at": "<ISO 8601 timestamp>"
+  "milestones_total": 0
 }
 ```
 
 Field meanings:
-- `current_role` — the role whose response produced this status
-- `phase` — coarse state (`completed` / `implementing` / `blocked`); role-specific phases allowed
-- `last_signal` — the termination signal of the most recent response
+- `lock.owner` — `""` (free), `"planner"`, or `"worker"`; whoever owns the current handoff
+- `lock.heartbeat_at` — ISO 8601; refreshed on every write by the holder. Stale (>30 min) locks can be force-released by Planner with a `worker_output.md` note.
+- `current_plan` — which `plans/NNN-…md` this delivery is executing
+- `phase` — coarse state (`completed` / `implementing` / `blocked` / etc.); role-specific phases allowed
 - `milestones_done` / `milestones_total` — Worker-only progress; omit for other roles
-- `updated_at` — ISO 8601 UTC, e.g. `2026-08-19T16:45:00Z`
 
 ---
 
@@ -189,9 +187,10 @@ Let users export all configured roles as CSV.
 Worker's prompt explicitly tells it:
 - Read `plan_output.md`
 - If missing or §4 absent → emit `WORKER_NO_PLAN`
-- Execute §4 line-by-line
-- Append each milestone to `worker_report.md`
-- End with `WORKER_DONE`
+- Check `status.md.lock.owner`; acquire if free (advisory mutex)
+- Execute §4 line-by-line; refresh `heartbeat_at` before long writes
+- Append each receipt to `worker_output.md` (v2 schema: one line per task)
+- Release the lock + end with `WORKER_DONE`
 
 Both prompts reference the **same file paths**, the **same schema**, and the **same signals** — that's the contract.
 

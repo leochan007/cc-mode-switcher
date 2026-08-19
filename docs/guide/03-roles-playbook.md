@@ -38,23 +38,27 @@ Layer 4 is the soft one. A glance at the tab title (`Plan | 🧠 Plan(GLM-5.3)`)
 
 Whatever roles you define, the same discipline applies: **make the role's output location explicit, and cross role boundaries only through disk files.**
 
-### The `.cc-delivery` contract
+### The `.cc-delivery` contract (v2 — 2026-08-19)
 
-For the canonical Plan ↔ Worker flow, both prompts write to a fixed location inside the project:
+For the canonical Plan ↔ Worker flow, both prompts write to a fixed location inside the project. Contract v2 introduces a structured status lock and renames the worker log file:
 
 ```
 <your-project>/.cc-delivery/
-├── plan_output.md    ← Plan writes here
-└── worker_report.md  ← Worker appends here as it goes
+├── plan_output.md     ← Plan writes here (active plan)
+├── status.md          ← protocol lock (owner + heartbeat) — both roles update JSON block
+└── worker_output.md   ← Worker appends structured receipts (was: worker_report.md)
 ```
 
 - **Plan's only output**: `.cc-delivery/plan_output.md` — architecture / file-by-file change plan / risks / acceptance criteria. **No production code blocks**.
-- **Plan's exit signal**: ends its response with the literal line `PLAN_READY: please launch the Worker role on this plan.`
-- **Worker's first action**: read `.cc-delivery/plan_output.md`. If it's missing, stop with `NO_PLAN: please run the Planner role first.`
-- **Worker's milestones**: append to `.cc-delivery/worker_report.md` after each meaningful change.
-- **Worker's exit signal**: ends with the literal line `WORK_DONE: all plan items implemented.`
+- **Plan's exit signal**: ends its response with the literal line `PLANNER_READY: <one-line summary>`.
+- **Worker's first action**: read `.cc-delivery/plan_output.md`. If it's missing, stop with `WORKER_NO_PLAN: please run the Planner role first.`
+- **Worker's second action**: check `.cc-delivery/status.md` `lock.owner` — if non-empty and not `"worker"`, emit `WORKER_BLOCKED: lock held by <owner>` and stop. Otherwise acquire the lock (`"worker"` + `heartbeat_at`).
+- **Worker's milestones**: append a one-line receipt to `.cc-delivery/worker_output.md` after each meaningful change (schema: `## <task-id> — done|in_progress|blocked @ <ISO>`).
+- **Worker's exit signal**: ends with `WORKER_DONE: <one-line summary>` **and** releases the lock (`status.md` `lock.owner: ""`).
 
-The literal exit signals make it easy for the human (and other tooling) to know when to switch roles — search for `PLAN_READY:` / `WORK_DONE:` in the session transcript.
+The literal exit signals make it easy for the human (and other tooling) to know when to switch roles — search for `PLANNER_READY:` / `WORKER_DONE:` in the session transcript.
+
+**Lock semantics (advisory, not hard-mutex):** the lock is an honor-system protocol — both roles check it on entry and refresh `heartbeat_at` on writes. A stale lock (>30 min without heartbeat) can be force-released by Planner, with the force-release recorded in the next `worker_output.md` receipt.
 
 ### Cross-role discipline rules
 
@@ -100,8 +104,8 @@ Both paths produce the same end state — a shell session with `cc-<role>` defin
 
 A role's session is "done" when its prompt's exit signal fires:
 
-- Plan: `PLAN_READY: please launch the Worker role on this plan.` (and `plan_output.md` is complete with no `OPEN QUESTION`s)
-- Worker: `WORK_DONE: all plan items implemented.`
+- Plan: `PLANNER_READY: <one-line summary>` (and `plan_output.md` is complete with no `OPEN QUESTION`s)
+- Worker: `WORKER_DONE: <one-line summary>` (and the status.md lock is released)
 - Custom roles: define your own exit signal in the prompt; the human reviews.
 
 Next: read [04 · Worker Role Playbook](04-worker-mode-playbook.md) for the execution side, or jump to [05 · End-to-End Example](05-workflow-example.md) to see it in action.
