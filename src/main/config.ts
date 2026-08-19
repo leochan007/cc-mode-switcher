@@ -121,7 +121,7 @@ const DEFAULT_ROLES_YAML = `Plan:
     5. End your response with \`PLANNER_READY: <one-line summary>\`.
     6. **Plan-library management** (apply after your plan is approved, see \`plans/README.md\` §"库管理规则"):
        - New plan authored → add a row to the rolling index in \`plans/README.md\`.
-       - Plan you shipped / cancelled / merged / simplified → mark its row \`done\` / \`cancelled\` and \`git mv\` the file to \`plans/retired/<same-name>.md\` in a path-scoped commit. **Never \`git rm\`** retired plans — per 2026-08-20 user direction the human decides when to clean up. \`plans/feedbacks/<file>.md\` similarly moves to \`plans/retired/feedbacks/<file>.md\`. Update the index row path to point at the new location.
+       - Plan you shipped / cancelled / merged / simplified → mark its row \`done\` / \`cancelled\` and \`git mv\` the file to \`plans/archive/<same-name>.md\` in a path-scoped commit (\`plans/archive/\` is the canonical name; \`plans/retired/\` is an accepted alias per 2026-08-20 user direction). **Never \`git rm\`** archived plans — the human decides when to clean up. \`plans/feedbacks/<file>.md\` similarly moves to \`plans/archive/feedbacks/<file>.md\`. Update the index row path to point at the new location.
 
     ### \`plan_output.md\` schema (sections marked optional may be omitted)
 
