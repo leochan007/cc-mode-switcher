@@ -44,11 +44,23 @@ async function runTest(): Promise<void> {
   if (testing.value) return
   testing.value = true
   try {
-    const r = await window.electronAPI.testConnection(props.model.baseUrl, props.model.apiKey)
+    const r = await window.electronAPI.testConnection(
+      props.model.baseUrl,
+      props.model.apiKey,
+      props.model.modelID
+    )
     if (r.ok) {
       toast.success(t('toast.connected', { name: props.model.name, ms: r.ms, status: r.status ?? '' }))
     } else {
-      toast.error(t('toast.unreachable', { name: props.model.name, error: r.error ?? '' }))
+      // Build a more informative error message: prefer the actual POST error
+      // (timeout / DNS / etc), then fall back to status codes from both probes.
+      const bits: string[] = []
+      if (r.postError) bits.push(`POST ${r.postError}`)
+      else if (r.status) bits.push(`POST status ${r.status}`)
+      if (r.fallbackStatus) bits.push(`GET /v1/models ${r.fallbackStatus}`)
+      else if (r.fallbackStatus === 0) bits.push('GET failed')
+      if (r.error && !bits.length) bits.push(r.error)
+      toast.error(t('toast.unreachable', { name: props.model.name, error: bits.join(' · ') || 'unknown' }))
     }
   } catch {
     toast.error(t('toast.testFailed', { name: props.model.name }))

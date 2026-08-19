@@ -271,22 +271,17 @@ ipcMain.handle('clipboard:write', async (_event, text: string) => {
   return true
 })
 
-ipcMain.handle('test-connection', async (_event, url: string, apiKey?: string) => {
+ipcMain.handle('test-connection', async (_event, url: string, apiKey?: string, modelId?: string) => {
   const started = Date.now()
   try {
     const parsed = new URL(url)
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       throw new Error('invalid URL protocol')
     }
-    // Don't GET the base URL directly — most Anthropic-compatible providers
-    // don't register a GET handler at the base path, so it returns 404 even
-    // when the API is perfectly healthy (GLM's base path happens to serve
-    // docs, MiniMax's doesn't — same problem, different symptom).
-    // /v1/models is part of the Anthropic API spec and all compatible
-    // providers must implement it; a 200 here means URL+key both correct.
-    // 401/403 means URL right but key invalid/expired. 404 means URL wrong.
-    const testUrl = parsed.toString().replace(/\/+$/, '') + '/v1/models'
-    const headers: Record<string, string> = {}
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      'anthropic-version': '2023-06-01'
+    }
     if (apiKey) {
       // Send x-api-key (Anthropic's official header) AND Authorization: Bearer
       // — most Anthropic-compatible providers accept either, but a few reject
@@ -294,13 +289,58 @@ ipcMain.handle('test-connection', async (_event, url: string, apiKey?: string) =
       headers['x-api-key'] = apiKey
       headers['Authorization'] = `Bearer ${apiKey}`
     }
-    const res = await fetch(testUrl, {
+
+    // Primary probe: GET /v1/models (auth + URL + model-list existence).
+    // We deliberately DO NOT POST /v1/messages here — that would consume
+    // MiniMax-style providers' message-quota budget, and clicking Test
+    // Connection repeatedly would burn through rate-limit tokens. The deeper
+    // POST probe is available as a separate one-time diagnostic (see below).
+    const modelsUrl = parsed.toString().replace(/\/+$/, '') + '/v1/models'
+    const modelsRes = await fetch(modelsUrl, {
       method: 'GET',
       headers,
       redirect: 'manual',
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(15000)
     })
-    return { ok: true, ms: Date.now() - started, status: res.status }
+
+    if (modelsRes.status >= 200 && modelsRes.status < 300) {
+      return { ok: true, ms: Date.now() - started, status: modelsRes.status, probe: 'models' }
+    }
+
+    // Fallback: POST /v1/messages — only fires if GET did NOT succeed.
+    // This is the deeper probe (validates the runtime path Claude Code uses)
+    // but we keep it as a fallback to avoid burning message quota when
+    // GET already proved URL + auth + model-existence are correct.
+    let postStatus = 0
+    let postError: string | null = null
+    const messagesUrl = parsed.toString().replace(/\/+$/, '') + '/v1/messages'
+    const body = JSON.stringify({
+      model: modelId || 'claude-3-5-haiku-latest',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'ping' }]
+    })
+    try {
+      const messagesRes = await fetch(messagesUrl, {
+        method: 'POST',
+        headers,
+        body,
+        redirect: 'manual',
+        signal: AbortSignal.timeout(30000)
+      })
+      postStatus = messagesRes.status
+    } catch (err: any) {
+      const cause = err?.cause?.code ?? err?.cause?.message
+      postError = cause ?? (err?.name === 'TimeoutError' ? 'timeout' : err?.message ?? 'unknown error')
+    }
+
+    return {
+      ok: false,
+      ms: Date.now() - started,
+      status: postStatus || modelsRes.status,
+      probe: postError ? 'messages' : 'fallback',
+      postError,
+      fallbackStatus: modelsRes.status
+    }
   } catch (err: any) {
     const cause = err?.cause?.code ?? err?.cause?.message
     const reason = cause ?? (err?.name === 'TimeoutError' ? 'timeout' : err?.message) ?? 'unknown error'

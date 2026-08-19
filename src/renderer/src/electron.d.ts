@@ -5,6 +5,11 @@ export interface ConnectionTestResult {
   ms: number
   status?: number
   error?: string
+  probe?: 'messages' | 'models'
+  /** When POST threw (timeout / DNS / connection reset), the cause string. */
+  postError?: string
+  /** Status of the GET /v1/models fallback probe (0 = threw too). */
+  fallbackStatus?: number
 }
 
 export interface ModelConfigDTO {
@@ -56,7 +61,7 @@ export type MenuCommand =
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
   /** Optional 2nd arg `apiKey` lets the test authenticate against /v1/models. */
-  testConnection: (url: string, apiKey?: string) => Promise<ConnectionTestResult>
+  testConnection: (url: string, apiKey?: string, modelId?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
   selectDirectory: () => Promise<string | null>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>

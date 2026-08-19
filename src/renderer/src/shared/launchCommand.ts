@@ -266,10 +266,22 @@ export function buildExternalSessionScript(opts: {
     `unset ZDOTDIR_BACKUP`
   ].join('\n')
 
+  // Resolve `~` against $HOME so single-quoting cwd doesn't break shell
+  // expansion. cd '~' → "no such file" because single quotes preserve the
+  // tilde as a literal character; cd "$HOME" works in any context.
+  const cdArg =
+    opts.cwd === '~'
+      ? '"$HOME"'
+      : opts.cwd.startsWith('~/')
+        ? `"$HOME"${opts.cwd.slice(1)}`
+        : opts.cwd.startsWith('~')
+          ? `"$HOME"/${opts.cwd.slice(1)}`
+          : sq(opts.cwd)
+
   return [
     `# cc-mode-switcher · external session bootstrap (rev8)`,
     `# launch.sh → ${cache}/launch.sh (visible for review)`,
-    `cd ${sq(opts.cwd)}`,
+    `cd ${cdArg}`,
     `mkdir -p "${cache}" "${zdot}"`,
     `# Write launch.sh (the same file internal pty sources).`,
     `printf '%s' '${utf8Base64(bootstrap)}' | base64 -d > "${cache}/launch.sh"`,

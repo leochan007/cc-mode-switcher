@@ -9,6 +9,9 @@ export interface ConnectionTestResult {
   ms: number
   status?: number
   error?: string
+  probe?: 'messages' | 'models'
+  postError?: string
+  fallbackStatus?: number
 }
 
 export interface ModelConfigDTO {
@@ -49,7 +52,7 @@ export interface SessionMetaDTO {
 
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
-  testConnection: (url: string, apiKey?: string) => Promise<ConnectionTestResult>
+  testConnection: (url: string, apiKey?: string, modelId?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
   selectDirectory: () => Promise<string | null>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
@@ -71,7 +74,7 @@ export type MenuCommand =
 
 export interface ElectronAPI {
   copyToClipboard: (text: string) => Promise<boolean>
-  testConnection: (url: string, apiKey?: string) => Promise<ConnectionTestResult>
+  testConnection: (url: string, apiKey?: string, modelId?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
   selectDirectory: () => Promise<string | null>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
@@ -119,7 +122,7 @@ declare global {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   copyToClipboard: (text: string) => ipcRenderer.invoke('clipboard:write', text),
-  testConnection: (url: string, apiKey?: string) => ipcRenderer.invoke('test-connection', url, apiKey),
+  testConnection: (url: string, apiKey?: string, modelId?: string) => ipcRenderer.invoke('test-connection', url, apiKey, modelId),
   selectTerminal: () => ipcRenderer.invoke('select-terminal'),
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   launchTerminal: (payload) => ipcRenderer.invoke('launch-terminal', payload),
