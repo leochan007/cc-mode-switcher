@@ -177,6 +177,13 @@ export default {
     version: '版本',
     roles: '角色',
     resetRoles: '重置角色',
-    resetTip: '恢复默认的 Plan + Worker（保留模型与已编辑的提示词文件）'
+    resetTip: '恢复默认的 Plan + Worker（保留模型与已编辑的提示词文件）',
+    defaultCwd: {
+      title: '默认工作目录',
+      current: '当前',
+      change: '修改…',
+      resetToHome: '重置为主目录',
+      description: '所有新会话都会以此目录启动,可随时修改。'
+    }
   }
 }

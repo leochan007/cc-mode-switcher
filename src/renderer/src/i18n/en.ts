@@ -177,6 +177,13 @@ export default {
     version: 'Version',
     roles: 'Roles',
     resetRoles: 'Reset Roles',
-    resetTip: 'Restore default Plan + Worker (keeps models and edited prompt files)'
+    resetTip: 'Restore default Plan + Worker (keeps models and edited prompt files)',
+    defaultCwd: {
+      title: 'Default Working Directory',
+      current: 'Current',
+      change: 'Change…',
+      resetToHome: 'Reset to Home',
+      description: 'This directory is used for all new sessions. You can change it anytime.'
+    }
   }
 }

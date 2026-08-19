@@ -48,6 +48,20 @@
     </div>
 
     <div class="card setting-card">
+      <div class="card-title">{{ t('settings.defaultCwd.title') }}</div>
+      <div class="setting-row">
+        <div class="terminal-info">
+          <span class="setting-label">{{ t('settings.defaultCwd.current') }}: <span class="default-cwd-path" :title="defaultCwdDisplay || undefined">{{ defaultCwdDisplay || '~' }}</span></span>
+          <div class="setting-hint">{{ t('settings.defaultCwd.description') }}</div>
+        </div>
+        <div class="default-cwd-actions">
+          <button class="btn-ghost" @click="changeDefaultCwd">{{ t('settings.defaultCwd.change') }}</button>
+          <button class="btn-ghost" @click="resetDefaultCwd">{{ t('settings.defaultCwd.resetToHome') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card setting-card">
       <div class="card-title">{{ t('settings.roles') }}</div>
       <div class="setting-row">
         <div>
@@ -69,11 +83,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useTheme } from '../composables/useTheme'
+import {
+  getDefaultCwd,
+  setDefaultCwd,
+  resetDefaultCwdToHome
+} from '../composables/useDefaultCwd'
 
-const emit = defineEmits<{ (e: 'reset-roles'): void }>()
+const emit = defineEmits<{
+  (e: 'reset-roles'): void
+  (e: 'default-cwd-changed', path: string): void
+}>()
 
 const { locale, t } = useI18n()
 const { theme } = useTheme()
@@ -92,6 +114,42 @@ watch(terminalPath, (v) => {
 async function pickTerminal(): Promise<void> {
   const picked = await window.electronAPI.selectTerminal()
   if (picked) terminalPath.value = picked
+}
+
+// ---- Default Working Directory (plans/004 §3.4) ----
+const homeDir = ref<string>('')
+const defaultCwdRaw = ref<string | null>(getDefaultCwd())
+
+const defaultCwdDisplay = computed<string>(() => {
+  if (defaultCwdRaw.value && defaultCwdRaw.value.length > 0) return defaultCwdRaw.value
+  return homeDir.value
+})
+
+watch(defaultCwdRaw, (v) => {
+  emit('default-cwd-changed', v ?? '')
+})
+
+onMounted(async () => {
+  homeDir.value = await window.electronAPI.homeDir()
+})
+
+async function changeDefaultCwd(): Promise<void> {
+  const start = (defaultCwdRaw.value && defaultCwdRaw.value.length > 0)
+    ? defaultCwdRaw.value
+    : ''
+  const picked = await window.electronAPI.selectDirectory({
+    purpose: 'default',
+    defaultCwd: start
+  })
+  if (!picked) return
+  setDefaultCwd(picked)
+  defaultCwdRaw.value = picked
+}
+
+function resetDefaultCwd(): void {
+  if (!homeDir.value) return
+  resetDefaultCwdToHome(homeDir.value)
+  defaultCwdRaw.value = homeDir.value
 }
 </script>
 
@@ -116,4 +174,16 @@ async function pickTerminal(): Promise<void> {
   text-overflow: ellipsis;
   max-width: 360px;
 }
+.default-cwd-path {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+  display: inline-block;
+  vertical-align: bottom;
+}
+.default-cwd-actions { display: flex; gap: 8px; flex-shrink: 0; }
 </style>
