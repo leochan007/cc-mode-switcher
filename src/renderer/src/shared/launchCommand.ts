@@ -201,7 +201,7 @@ export function buildLaunchScripts(opts: {
       .join(' ')
     lines.push(`${fnName}() {`)
     lines.push(...envLines)
-    lines.push(`  exec claude ${argsLine}`)
+    lines.push(`  exec claude ${argsLine} "$@"`)
     lines.push(`}`)
     lines.push('')
   }
