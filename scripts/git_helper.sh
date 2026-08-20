@@ -3,6 +3,7 @@
 #
 # Subcommands:
 #   reset           hard-reset current branch to a commit + force-push
+#   set-tag         create a local tag and push it to origin                    [alias: st]
 #   delete-tag      delete a local and/or remote git tag
 #   call-workflow   trigger a remote GitHub Actions workflow (requires gh CLI)   [alias: cw]
 #   list-workflow   list remote GitHub Actions workflows (requires gh CLI)        [alias: lw]
@@ -35,6 +36,11 @@ Commands:
                    $SCRIPT_NAME delete-tag <tag> --local    # only local
                    $SCRIPT_NAME delete-tag <tag> --remote   # only remote
 
+  set-tag         Create a local tag and push it to origin (alias: st)
+                   $SCRIPT_NAME set-tag <tag>            # annotated at HEAD
+                   $SCRIPT_NAME set-tag <tag> <commit>   # annotated at commit
+                   $SCRIPT_NAME set-tag <tag> --lightweight
+
   call-workflow   Trigger a remote GitHub Actions workflow (alias: cw)
                    $SCRIPT_NAME call-workflow <workflow-file-or-id> [-f key=val ...]
                    Requires: gh CLI (https://cli.github.com) + gh auth login
@@ -47,6 +53,8 @@ Commands:
 
 Examples:
   $SCRIPT_NAME reset 72acf1a
+  $SCRIPT_NAME set-tag v2.0.0
+  $SCRIPT_NAME set-tag v2.0.0 72acf1a
   $SCRIPT_NAME delete-tag v2.0.0
   $SCRIPT_NAME delete-tag v2.0.0 --local
   $SCRIPT_NAME list-workflow
@@ -102,6 +110,76 @@ cmd_reset() {
   echo ""
   echo "✅完成。当前HEAD："
   git log -1 --oneline
+}
+
+# -----------------------------------------------------------------------------
+# set-tag — create a local tag and push it to origin
+# -----------------------------------------------------------------------------
+
+cmd_set_tag() {
+  require_git_repo
+
+  if [[ $# -lt 1 ]]; then
+    echo "用法: $SCRIPT_NAME set-tag <tag> [commit] [--lightweight]"
+    echo "  默认: annotated tag at HEAD, message = 'Tag <tag> at <short-sha>'"
+    exit 1
+  fi
+
+  local tag="$1"
+  shift
+
+  local lightweight=false
+  local commit="HEAD"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --lightweight|-l) lightweight=true; shift ;;
+      -*) echo "未知参数: $1" >&2; exit 1 ;;
+      *)
+        # First non-flag positional is the commit ref
+        if [[ "$commit" == "HEAD" ]]; then
+          commit="$1"
+          shift
+        else
+          echo "多余的位置参数: $1" >&2
+          exit 1
+        fi
+        ;;
+    esac
+  done
+
+  # Resolve short sha for the auto-generated message
+  local short_sha
+  short_sha=$(git rev-parse --short "$commit" 2>/dev/null) || {
+    echo "❌ Error: 无法解析 commit: $commit" >&2
+    exit 1
+  }
+
+  # Bail if the tag already exists locally
+  if git rev-parse "$tag" >/dev/null 2>&1; then
+    echo "❌ Error: tag $tag 已存在 (本地)。先删除: $SCRIPT_NAME delete-tag $tag" >&2
+    exit 1
+  fi
+
+  echo "======================================"
+  echo "新建tag:    $tag"
+  echo "指向commit: $commit ($short_sha)"
+  echo "类型:       $($lightweight && echo "lightweight" || echo "annotated")"
+  echo "将push到:   origin"
+  echo "======================================"
+  confirm "确认创建并推送?"
+
+  if $lightweight; then
+    git tag "$tag" "$commit"
+  else
+    git tag -a "$tag" "$commit" -m "Tag $tag at $short_sha"
+  fi
+
+  git push origin "$tag"
+
+  echo ""
+  echo "✅完成。tag $tag 已创建并推送到 origin"
+  echo "  验证: git ls-remote origin $tag"
 }
 
 # -----------------------------------------------------------------------------
@@ -240,6 +318,7 @@ cmd_list_workflow() {
 cmd="${1:-help}"
 case "$cmd" in
   reset)              shift; cmd_reset "$@" ;;
+  set-tag|st)         shift; cmd_set_tag "$@" ;;
   delete-tag)         shift; cmd_delete_tag "$@" ;;
   call-workflow|cw)   shift; cmd_call_workflow "$@" ;;
   list-workflow|lw)   shift; cmd_list_workflow "$@" ;;
