@@ -99,10 +99,10 @@ function claudeArgs(role: RoleConfig, systemPromptContent: string): string[] {
     args.push(`--system-prompt '${sqShellSafe(systemPromptContent)}'`)
   }
   if (role.allowedTools.length) {
-    args.push(`--allowedTools ${role.allowedTools.join(',')}`)
+    args.push(`--allowedTools '${sqShellSafe(role.allowedTools.join(','))}'`)
   }
   if (role.disallowedTools.length) {
-    args.push(`--disallowedTools ${role.disallowedTools.join(',')}`)
+    args.push(`--disallowedTools '${sqShellSafe(role.disallowedTools.join(','))}'`)
   }
   return args
 }
