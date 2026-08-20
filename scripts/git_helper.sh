@@ -2,7 +2,7 @@
 # git_helper.sh — unified git helper for cc-mode-switcher
 #
 # Subcommands:
-#   reset           hard-reset current branch to a commit + force-push, optional tag delete
+#   reset           hard-reset current branch to a commit + force-push
 #   delete-tag      delete a local and/or remote git tag
 #   call-workflow   trigger a remote GitHub Actions workflow (requires gh CLI)
 #   help            show this help
@@ -25,9 +25,9 @@ Usage:
   $SCRIPT_NAME <command> [args]
 
 Commands:
-  reset           Hard-reset current branch to a commit + force-push, optional tag delete
-                   $SCRIPT_NAME reset <commit> [tag]
-                 For tag-only deletes, use the `delete-tag` subcommand.
+  reset           Hard-reset current branch to a commit + force-push
+                   $SCRIPT_NAME reset <commit>
+                 For tag deletes, use the `delete-tag` subcommand.
 
   delete-tag      Delete a local and/or remote git tag
                    $SCRIPT_NAME delete-tag <tag>            # both local + remote
@@ -41,7 +41,7 @@ Commands:
   help            Show this help (alias: --help, -h, or no args)
 
 Examples:
-  $SCRIPT_NAME reset 72acf1a v2.0.0
+  $SCRIPT_NAME reset 72acf1a
   $SCRIPT_NAME delete-tag v2.0.0
   $SCRIPT_NAME delete-tag v2.0.0 --local
   $SCRIPT_NAME call-workflow deploy.yml -f environment=prod -f commit=HEAD
@@ -72,12 +72,11 @@ cmd_reset() {
   require_git_repo
 
   local target_commit="${1:-}"
-  local tag_name="${2:-}"
 
   if [[ -z "$target_commit" ]]; then
     echo "用法:"
-    echo "  $SCRIPT_NAME reset <commit> [tag]"
-    echo "  (for tag-only deletes use: $SCRIPT_NAME delete-tag <tag>)"
+    echo "  $SCRIPT_NAME reset <commit>"
+    echo "  (for tag deletes use: $SCRIPT_NAME delete-tag <tag>)"
     exit 1
   fi
 
@@ -87,22 +86,12 @@ cmd_reset() {
   echo "======================================"
   echo "当前分支: $cur_branch"
   echo "回退目标commit: $target_commit"
-  if [[ -n "$tag_name" ]]; then
-    echo "将要删除tag: $tag_name"
-  fi
   echo "======================================"
   echo "⚠️  警告：会丢弃当前分支之后所有提交，改写远程历史！"
   confirm "确认继续?"
 
   git reset --hard "$target_commit"
   git push origin "${cur_branch}" --force-with-lease
-
-  if [[ -n "$tag_name" ]]; then
-    echo "删除本地 tag $tag_name"
-    git tag -d "$tag_name" || true
-    echo "删除远程 tag $tag_name"
-    git push origin --delete "$tag_name" || true
-  fi
 
   echo ""
   echo "✅完成。当前HEAD："
