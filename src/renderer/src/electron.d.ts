@@ -63,7 +63,7 @@ export interface ElectronAPI {
   /** Optional 2nd arg `apiKey` lets the test authenticate against /v1/models. */
   testConnection: (url: string, apiKey?: string, modelId?: string) => Promise<ConnectionTestResult>
   selectTerminal: () => Promise<string | null>
-  selectDirectory: () => Promise<string | null>
+  selectDirectory: (opts?: { purpose?: 'default' | 'oneoff'; defaultCwd?: string }) => Promise<string | null>
   launchTerminal: (payload: { terminalPath: string; command: string }) => Promise<{ ok: boolean; error?: string }>
 
   setRecentCwds: (paths: string[]) => Promise<boolean>

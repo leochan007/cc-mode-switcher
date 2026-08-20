@@ -26,7 +26,6 @@
               v-if="view === 'table'"
               :role="selectedRole"
               :model="selectedModel"
-              :cwd="cwd || '~'"
               @open-window="onOpenInExternalTerminal"
               @open-shell="onOpenShell"
             />
@@ -257,6 +256,18 @@ async function resolveCwdForNewShell(explicit?: string): Promise<string> {
   return resolved
 }
 
+/** Terminal button (▶️/🪟) — always pop the folder picker, starting at
+ *  defaultCwd (empty → main falls back to homedir). Cancel returns null and
+ *  the caller aborts silently (no toast). Enter on defaultCwd = open in
+ *  defaultCwd without further confirmation. */
+async function pickCwdForLaunch(): Promise<string | null> {
+  const def = getDefaultCwd()
+  return window.electronAPI.selectDirectory({
+    purpose: 'oneoff',
+    defaultCwd: def && def.length > 0 ? def : ''
+  })
+}
+
 onMounted(async () => {
   await load()
   rolesYamlRaw.value = await readRolesYaml()
@@ -387,9 +398,14 @@ async function onStartSelected(): Promise<void> {
   await onOpenShell({ cwd })
 }
 
-async function onOpenShell(payload: { cwd: string; bootstrap?: string; color?: string }): Promise<void> {
+async function onOpenShell(payload: { cwd?: string; bootstrap?: string; color?: string }): Promise<void> {
+  // Terminal button path: payload has no cwd → pickCwdForLaunch.
+  // Menu / Alt+T paths (onStartSelected) pre-resolve cwd → payload.cwd set;
+  // skip the picker to preserve 004's auto-decision chain for those.
+  const cwd = payload.cwd ?? (await pickCwdForLaunch())
+  if (!cwd) return
   const tabId = await openShellTab({
-    cwd: payload.cwd,
+    cwd,
     bootstrap: payload.bootstrap,
     color: payload.color
   })
@@ -397,7 +413,7 @@ async function onOpenShell(payload: { cwd: string; bootstrap?: string; color?: s
     toast.error(t('toast.tabOpenFail'))
     return
   }
-  pushCwd(payload.cwd)
+  pushCwd(cwd)
 }
 
 async function onLaunchRoleFromDetail(roleId: string): Promise<void> {
@@ -465,11 +481,7 @@ async function onMenuNewShellWithRoleExternal(): Promise<void> {
 /** Folder picker → opens that dir in internal terminal (with multi-role bootstrap).
  *  Per plans/004 §3.5: dialog starts at defaultCwd if set, otherwise homedir. */
 async function onMenuOpenFolder(): Promise<void> {
-  const def = getDefaultCwd()
-  const picked = await window.electronAPI.selectDirectory({
-    purpose: 'oneoff',
-    defaultCwd: def && def.length > 0 ? def : ''
-  })
+  const picked = await pickCwdForLaunch()
   if (!picked) return
   cwd.value = picked
   pushCwd(picked)
@@ -500,15 +512,18 @@ async function launchExternalPlainShell(cwd: string): Promise<void> {
 
 /** Run the role's launch script in external Terminal.app — single entry,
  *  matching internal `openRoleTab`'s behaviour: only this role's
- *  `cc-<role>()` function is defined in the external shell. */
-async function launchExternalWithRole(roleId: string, terminalPath?: string): Promise<void> {
+ *  `cc-<role>()` function is defined in the external shell.
+ *  `explicitCwd` is passed by the ▶/🪟 button path (which has already
+ *  popped the folder picker); menu paths omit it so the 004 auto-decision
+ *  chain (resolveCwdForNewShell) stays in effect for them. */
+async function launchExternalWithRole(roleId: string, terminalPath?: string, explicitCwd?: string): Promise<void> {
   const role = roles.value.find((r) => r.id === roleId)
   const model = role?.model ? models.value.find((m) => m.id === role.model) : null
   if (!role || !model) {
     toast.error(t('toast.noModel'))
     return
   }
-  const cwd = await resolveCwdForNewShell()
+  const cwd = explicitCwd ?? (await resolveCwdForNewShell())
   if (!cwd) return
   const script = buildExternalSessionScript({
     entries: [{ role, model, systemPromptContent: role.systemPrompt ?? '' }],
@@ -560,14 +575,18 @@ async function onOpenInExternalTerminal(payload: { roleId: string; command: stri
   // `payload.command` is the panel's preview bootstrap — deliberately ignored:
   // the external window must run the full session script (cd + env + claude)
   // to behave like the internal terminal. Rebuild it via launchExternalWithRole.
+  // Order is fixed: folder picker first (🪟 → user picks cwd), then the
+  // terminal-app picker if cc_terminal hasn't been chosen yet.
+  const picked = await pickCwdForLaunch()
+  if (!picked) return
   let final = localStorage.getItem('cc_terminal')
   if (!final) {
-    const picked = await window.electronAPI.selectTerminal()
-    if (!picked) return
-    localStorage.setItem('cc_terminal', picked)
-    final = picked
+    const t = await window.electronAPI.selectTerminal()
+    if (!t) return
+    localStorage.setItem('cc_terminal', t)
+    final = t
   }
-  await launchExternalWithRole(payload.roleId, final)
+  await launchExternalWithRole(payload.roleId, final, picked)
 }
 
 // ---------- Cmd+T / Cmd+N handling ----------

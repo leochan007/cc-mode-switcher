@@ -11,7 +11,7 @@
           :icon="'▶️'"
           :tip="t('detail.openShell')"
           variant="primary"
-          @confirm="emit('open-shell', { cwd, bootstrap: script, color: role.color })"
+          @confirm="emit('open-shell', { bootstrap: script, color: role.color })"
         />
         <IconButton :icon="'📋'" :tip="copied ? t('detail.copied') : t('detail.copy')" @confirm="copyCommand" />
         <IconButton :icon="'🪟'" :tip="t('detail.openWindow')" @confirm="openInWindow" />
@@ -72,12 +72,11 @@ import IconButton from './IconButton.vue'
 const props = defineProps<{
   role: RoleConfig | null
   model: ModelConfig | null
-  cwd: string
 }>()
 
 const emit = defineEmits<{
   (e: 'open-window', payload: { roleId: string; command: string }): void
-  (e: 'open-shell', payload: { cwd: string; bootstrap?: string; color?: string }): void
+  (e: 'open-shell', payload: { bootstrap?: string; color?: string }): void
 }>()
 
 const { t } = useI18n()
