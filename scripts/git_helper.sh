@@ -18,7 +18,7 @@ SCRIPT_NAME=$(basename "$0")
 # -----------------------------------------------------------------------------
 
 usage() {
-  cat <<EOF
+  cat <<'EOF'
 $SCRIPT_NAME — unified git helper for cc-mode-switcher
 
 Usage:
@@ -27,7 +27,7 @@ Usage:
 Commands:
   reset           Hard-reset current branch to a commit + force-push, optional tag delete
                    $SCRIPT_NAME reset <commit> [tag]
-                   $SCRIPT_NAME reset --tag-only <tag>
+                 For tag-only deletes, use the `delete-tag` subcommand.
 
   delete-tag      Delete a local and/or remote git tag
                    $SCRIPT_NAME delete-tag <tag>            # both local + remote
@@ -42,7 +42,6 @@ Commands:
 
 Examples:
   $SCRIPT_NAME reset 72acf1a v2.0.0
-  $SCRIPT_NAME reset --tag-only v2.0.0
   $SCRIPT_NAME delete-tag v2.0.0
   $SCRIPT_NAME delete-tag v2.0.0 --local
   $SCRIPT_NAME call-workflow deploy.yml -f environment=prod -f commit=HEAD
@@ -72,31 +71,13 @@ confirm() {
 cmd_reset() {
   require_git_repo
 
-  # --tag-only <tag>: only delete the tag, leave branch untouched
-  if [[ "${1:-}" == "--tag-only" ]]; then
-    if [[ $# -lt 2 ]]; then
-      echo "用法: $SCRIPT_NAME reset --tag-only <tag>"
-      exit 1
-    fi
-    local tag="$2"
-    echo "======================================"
-    echo "模式：仅删除tag，不修改分支代码"
-    echo "待删除tag: $tag"
-    echo "======================================"
-    confirm "确认删除本地+远程tag $tag ?"
-    git tag -d "$tag" || true
-    git push origin --delete "$tag" || true
-    echo "✅ tag $tag 删除完成"
-    exit 0
-  fi
-
   local target_commit="${1:-}"
   local tag_name="${2:-}"
 
   if [[ -z "$target_commit" ]]; then
     echo "用法:"
     echo "  $SCRIPT_NAME reset <commit> [tag]"
-    echo "  $SCRIPT_NAME reset --tag-only <tag>"
+    echo "  (for tag-only deletes use: $SCRIPT_NAME delete-tag <tag>)"
     exit 1
   fi
 
