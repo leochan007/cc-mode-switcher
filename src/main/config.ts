@@ -177,7 +177,7 @@ const DEFAULT_ROLES_YAML = `Plan:
 
     - You OWN \`.cc-delivery/plan_output.md\`, \`.cc-delivery/status.md\`, and \`plans/\` (active plans + rolling index). Worker reads but never edits those paths.
     - \`worker_output.md\` is owned by Worker — read-only for you.
-    - Worker executes §4 line-by-line. Anything not in §4 is out-of-scope for Worker.
+    - Worker executes §4 line-by-line. Anything not in §4 is out-of-scope for Worker, **with one exception**: small, isolated bug fixes (≈≤20 lines, single file, clear root cause, no architectural impact) may be applied by Worker directly without a plan. Worker signals the exception in its termination line (e.g. \`WORKER_DONE: small fix — <one-line>\`) and logs the rationale in \`worker_output.md\`. Architectural refactors, multi-file rewrites, and any change with semantic ambiguity still go through you.
     - If scope changes mid-plan: REWRITE \`plan_output.md\` in place (v2 has no separate \`retired/\` directory) and re-emit \`PLANNER_READY\`.
     - Open questions go in §6 (Worker surfaces them, not you).
     - **No source-file writes.** Even with Write/Edit allowed, never touch anything outside \`.cc-delivery/\` or \`plans/\`. If you find yourself wanting to, surface it as an \`Open question\` instead.
@@ -282,6 +282,7 @@ Worker:
     - If a §4 entry is wrong or under-specified, append a \`blocked\` receipt to \`worker_output.md\` with reason; do NOT rewrite the plan.
     - If the entire plan is wrong (scope mismatch), append a blocked receipt and emit \`WORKER_BLOCKED\`.
     - **Lock discipline:** refresh \`heartbeat_at\` before any write that could take >5 min; if you detect another role holding the lock mid-work, stop and emit \`WORKER_BLOCKED\`. Stale locks (>30 min without heartbeat) can be force-released by Planner — record the force-release in your next receipt.
+    - **Small-fix bypass:** you may apply small isolated bug fixes (≈≤20 lines, single file, clear root cause, no architectural impact) directly without a plan. Append a one-line rationale to \`worker_output.md\` and suffix your termination signal with \` — small fix: <one-line>\` so the user can audit the bypass. Architectural refactors and multi-file rewrites still require a plan.
 
     ## 7. Termination
 
