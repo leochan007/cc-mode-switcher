@@ -4,7 +4,8 @@
 # Subcommands:
 #   reset           hard-reset current branch to a commit + force-push
 #   delete-tag      delete a local and/or remote git tag
-#   call-workflow   trigger a remote GitHub Actions workflow (requires gh CLI)
+#   call-workflow   trigger a remote GitHub Actions workflow (requires gh CLI)   [alias: cw]
+#   list-workflow   list remote GitHub Actions workflows (requires gh CLI)        [alias: lw]
 #   help            show this help
 #
 # Run `git_helper.sh help` any time.
@@ -34,9 +35,13 @@ Commands:
                    $SCRIPT_NAME delete-tag <tag> --local    # only local
                    $SCRIPT_NAME delete-tag <tag> --remote   # only remote
 
-  call-workflow   Trigger a remote GitHub Actions workflow
+  call-workflow   Trigger a remote GitHub Actions workflow (alias: cw)
                    $SCRIPT_NAME call-workflow <workflow-file-or-id> [-f key=val ...]
                    Requires: gh CLI (https://cli.github.com) + gh auth login
+
+  list-workflow   List remote GitHub Actions workflows (alias: lw)
+                   $SCRIPT_NAME list-workflow
+                   Requires: gh CLI + gh auth login
 
   help            Show this help (alias: --help, -h, or no args)
 
@@ -44,6 +49,7 @@ Examples:
   $SCRIPT_NAME reset 72acf1a
   $SCRIPT_NAME delete-tag v2.0.0
   $SCRIPT_NAME delete-tag v2.0.0 --local
+  $SCRIPT_NAME list-workflow
   $SCRIPT_NAME call-workflow deploy.yml -f environment=prod -f commit=HEAD
 EOF
 }
@@ -150,16 +156,10 @@ cmd_delete_tag() {
 }
 
 # -----------------------------------------------------------------------------
-# call-workflow — trigger a GitHub Actions workflow via gh CLI
+# require_gh — shared gh CLI + auth check for call-workflow / list-workflow
 # -----------------------------------------------------------------------------
 
-cmd_call_workflow() {
-  if [[ $# -lt 1 ]]; then
-    echo "用法: $SCRIPT_NAME call-workflow <workflow-file-or-id> [-f key=val ...]"
-    echo "示例: $SCRIPT_NAME call-workflow deploy.yml -f environment=prod -f commit=HEAD"
-    exit 1
-  fi
-
+require_gh() {
   if ! command -v gh >/dev/null 2>&1; then
     echo "❌ Error: gh CLI 未安装" >&2
     echo "" >&2
@@ -176,6 +176,20 @@ cmd_call_workflow() {
     echo "请先运行:  gh auth login" >&2
     exit 1
   fi
+}
+
+# -----------------------------------------------------------------------------
+# call-workflow — trigger a GitHub Actions workflow via gh CLI
+# -----------------------------------------------------------------------------
+
+cmd_call_workflow() {
+  if [[ $# -lt 1 ]]; then
+    echo "用法: $SCRIPT_NAME call-workflow <workflow-file-or-id> [-f key=val ...]"
+    echo "示例: $SCRIPT_NAME call-workflow deploy.yml -f environment=prod -f commit=HEAD"
+    exit 1
+  fi
+
+  require_gh
 
   local workflow="$1"
   shift
@@ -206,14 +220,29 @@ cmd_call_workflow() {
 }
 
 # -----------------------------------------------------------------------------
+# list-workflow — list remote GitHub Actions workflows
+# -----------------------------------------------------------------------------
+
+cmd_list_workflow() {
+  require_gh
+
+  echo "======================================"
+  echo "远程 workflows:"
+  echo "======================================"
+  # gh workflow list prints a table; --no-table keeps it parseable if piped.
+  gh workflow list
+}
+
+# -----------------------------------------------------------------------------
 # entry point
 # -----------------------------------------------------------------------------
 
 cmd="${1:-help}"
 case "$cmd" in
-  reset)          shift; cmd_reset "$@" ;;
-  delete-tag)     shift; cmd_delete_tag "$@" ;;
-  call-workflow)  shift; cmd_call_workflow "$@" ;;
+  reset)              shift; cmd_reset "$@" ;;
+  delete-tag)         shift; cmd_delete_tag "$@" ;;
+  call-workflow|cw)   shift; cmd_call_workflow "$@" ;;
+  list-workflow|lw)   shift; cmd_list_workflow "$@" ;;
   help|--help|-h|"") usage ;;
   *) echo "未知命令: $cmd"; echo; usage; exit 1 ;;
 esac
