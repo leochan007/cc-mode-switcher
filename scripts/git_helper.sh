@@ -272,24 +272,29 @@ cmd_call_workflow() {
   local workflow="$1"
   shift
   local -a inputs=()
+  local has_inputs=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -f|--field) inputs+=(-f "$2"); shift 2 ;;
+      -f|--field) inputs+=(-f "$2"); has_inputs=true; shift 2 ;;
       *) echo "未知参数: $1" >&2; exit 1 ;;
     esac
   done
 
   echo "======================================"
   echo "触发 workflow: $workflow"
-  if [[ ${#inputs[@]} -gt 0 ]]; then
+  if $has_inputs; then
     echo "inputs:"
-    for ((i=0; i<${#inputs[@]}; i+=2)); do
-      echo "  ${inputs[i+1]}"
-    done
+    printf '  %s\n' "${inputs[@]}"
   fi
   echo "======================================"
 
-  gh workflow run "$workflow" "${inputs[@]}"
+  # Use the `+ "${array[@]}"` form so the expansion is a no-op when the array
+  # is empty (avoids bash 3.2 + set -u "unbound variable" on "${array[@]}").
+  if $has_inputs; then
+    gh workflow run "$workflow" "${inputs[@]}"
+  else
+    gh workflow run "$workflow"
+  fi
 
   echo ""
   echo "✅ 已触发。查看 run:"
