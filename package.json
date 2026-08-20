@@ -59,9 +59,8 @@
 
     "mac": {
       "icon": "build/icon.icns",
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "identity": null,
       "target": [
         {
           "target": "dmg",
