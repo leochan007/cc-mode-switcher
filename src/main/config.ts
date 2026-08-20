@@ -120,6 +120,12 @@ const DEFAULT_ROLES_YAML = `Plan:
     4. Update \`status.md\` JSON block (lock schema below). Set \`lock.owner\` to \`"planner"\` and refresh \`heartbeat_at\`.
     5. End your response with \`PLANNER_READY: <one-line summary>\`.
     6. **Plan-library management** (apply after your plan is approved, see \`plans/README.md\` §"库管理规则"):
+       - Reopen red-flag: if the user's request touches, refines, or contests a plan already marked
+         done/archived in the index, do NOT just re-execute it — treat it as a strong signal of a
+         MAJOR gap between the AI's implementation and the human's actual need. Required: (a) re-read
+         that plan's acceptance criteria and name the divergence explicitly; (b) author a NEW NNN
+         (Refs → old number) instead of resurrecting the old file; (c) open plan_output.md with a
+         "## ⚠ Reopened from NNN" section at the top highlighting the suspected gap for the user.
        - New plan authored → add a row to the rolling index in \`plans/README.md\`.
        - Plan you shipped / cancelled / merged / simplified → mark its row \`done\` / \`cancelled\` and \`git mv\` the file to \`plans/archive/<same-name>.md\` in a path-scoped commit (\`plans/archive/\` is the canonical name; \`plans/retired/\` is an accepted alias per 2026-08-20 user direction). **Never \`git rm\`** archived plans — the human decides when to clean up. \`plans/feedbacks/<file>.md\` similarly moves to \`plans/archive/feedbacks/<file>.md\`. Update the index row path to point at the new location.
 
@@ -186,8 +192,8 @@ const DEFAULT_ROLES_YAML = `Plan:
 
     The app greps your final line for the signal — non-conforming responses will be treated as no-signal.
   disallowedPlugins: [superpowers]
-  allowedTools: [Read, LS, Glob, Grep, Write(.cc-delivery/**), Write(plans/**), Edit, NotebookEdit]
-  disallowedTools: [Bash, WebSearch]
+  allowedTools: [Read, LS, Glob, Grep, Write(.cc-delivery/**), Write(plans/**), Edit, NotebookEdit, Bash(git status:*), Bash(git add:*), Bash(git mv:*), Bash(git commit:*)]
+  disallowedTools: [WebSearch]
   color: '#3b82f6'
 Worker:
   model: ''
@@ -235,6 +241,14 @@ Worker:
     ## 5. Workflow
 
     1. Read \`.cc-delivery/plan_output.md\`. If missing or §4 is absent, emit \`WORKER_NO_PLAN\` and STOP.
+    1b. Reopen red-flag: cross-check the plan you are about to execute (title / current_plan / §1)
+       against the plans/README.md index. If it maps to a plan number already marked done/archived
+       (the work order is literally re-running a retired plan), STOP — append a blocked receipt
+       noting the reopen, then emit "WORKER_BLOCKED: work order re-opens retired NNN — likely major
+       AI-implementation vs human-need divergence; needs user confirmation". Never silently
+       re-execute a retired plan. (A NEW plan that merely references an archived one in Refs, with
+       planner's ⚠ Reopened banner, is a sanctioned reopen — proceed, but echo the banner in your
+       first receipt.)
     2. **Acquire lock:** read \`.cc-delivery/status.md\`. If \`lock.owner\` is empty, write \`"worker"\` + \`heartbeat_at\`. If it is \`"planner"\` or another \`"worker"\`, emit \`WORKER_BLOCKED: lock held by <owner>\` and STOP.
     3. Update \`status.md\` to:
        \`\`\`json
